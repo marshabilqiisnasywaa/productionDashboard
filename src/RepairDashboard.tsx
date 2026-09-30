@@ -133,10 +133,11 @@ function WipTable() {
 }
 
 function NgProductionCard() {
+  const [showTable, setShowTable] = useState(false);
   const miniData = ["2026","Jan","Feb","Mar","Apr","Mei","Jun"].map((period,index) => ({ period, actual: ngRows[1].values[index], target: 1 }));
-  return <article className="repair-panel wide ng-panel"><div className="repair-card-head"><div><h2>NG Production Rate</h2><p>Actual NG Rate compared with standard</p></div><span className="repair-status good">Target ≤ 1.00%</span></div>
+  return <article className="repair-panel wide ng-panel"><div className="repair-card-head"><div><h2>NG Production Rate</h2><p>Actual NG Rate compared with standard</p></div><div className="chart-card-actions"><span className="repair-status good">Target ≤ 1.00%</span><button type="button" className={`chart-toggle ${showTable ? "active" : ""}`} onClick={() => setShowTable((value) => !value)}>{showTable ? "Sembunyikan Tabel" : "Tampilkan Tabel"}</button></div></div>
     <div className="ng-mini-chart"><ResponsiveContainer width="100%" height="100%"><LineChart data={miniData}><CartesianGrid vertical={false}/><XAxis dataKey="period" axisLine={false} tickLine={false}/><YAxis domain={[0,2.1]} axisLine={false} tickLine={false}/><Tooltip/><Legend/><Line dataKey="target" stroke="var(--success)" strokeDasharray="5 5" dot={false}/><Line dataKey="actual" stroke="var(--chart-1)" strokeWidth={2}/></LineChart></ResponsiveContainer></div>
-    <div className="repair-table-scroll"><table className="repair-data-table"><thead><tr><th className="sticky-col">Metric</th>{["2026","Jan","Feb","Mar","Apr","Mei","Jun"].map((p)=><th key={p}>{p}</th>)}</tr></thead><tbody>{ngRows.map((row)=><tr key={row.label}><td className="sticky-col"><strong>{row.label}</strong></td>{row.values.map((value,index)=>{const status = row.target === undefined ? "" : ((row.lower ? value <= row.target : value >= row.target) ? "pass-cell":"fail-cell"); return <td className={status} key={index}>{value.toLocaleString()}{row.percent ? "%" : ""}</td>})}</tr>)}</tbody></table></div>
+    {showTable && <div className="chart-detail-table-wrap"><table className="repair-data-table chart-detail-table"><thead><tr><th className="sticky-col">Metric</th>{["2026","Jan","Feb","Mar","Apr","Mei","Jun"].map((p)=><th key={p}>{p}</th>)}</tr></thead><tbody>{ngRows.map((row)=><tr key={row.label}><td className="sticky-col"><strong>{row.label}</strong></td>{row.values.map((value,index)=>{const status = row.target === undefined ? "" : ((row.lower ? value <= row.target : value >= row.target) ? "pass-cell":"fail-cell"); return <td className={status} key={index}>{value.toLocaleString()}{row.percent ? "%" : ""}</td>})}</tr>)}</tbody></table></div>}
   </article>;
 }
 

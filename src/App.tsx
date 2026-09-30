@@ -9,10 +9,11 @@ import {
   Tooltip,
   XAxis,
 } from "recharts";
-import ollieImage from "./assets/ollie.png";
-import oppoLogo from "./assets/oppo-logo.png";
-import oppoLogoDark from "./assets/oppo-logo-dark.svg";
 import RepairDashboard from "./RepairDashboard";
+
+const ollieImage = new URL("./assets/ollie.png", import.meta.url).href;
+const oppoLogo = new URL("./assets/oppo-logo.png", import.meta.url).href;
+const oppoLogoDark = new URL("./assets/oppo-logo-dark.svg", import.meta.url).href;
 
 type IconName =
   | "factory" | "grid" | "assembly" | "package" | "shield" | "wrench"
@@ -158,6 +159,7 @@ export default function App() {
   })).filter((group) => group.items.length), [commandQuery]);
   const filteredCommands = filteredCommandGroups.flatMap((group) => group.items);
   const isRepairPage = ["Preassembly", "Rework", "Warranty", "Abnormal"].includes(active);
+  const activeBrandLogo = dark ? oppoLogoDark : oppoLogo;
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -212,7 +214,7 @@ export default function App() {
         {mobileSidebar && <button className="sheet-overlay" aria-label="Close navigation" onClick={() => setMobileSidebar(false)} />}
         <aside className={`sidebar ${mobileSidebar ? "sheet-open" : ""}`}>
           <button className="logo" onClick={() => setSidebarExpanded(true)} data-tooltip="OPPO workspace">
-            <img className="brand-image sidebar-copy" src={dark ? oppoLogoDark : oppoLogo} alt="OPPO" />
+            <img className="brand-image sidebar-copy" src={activeBrandLogo} alt="OPPO" />
             <img className="ollie-image" src={ollieImage} alt="Ollie" />
             <span className="workspace-chevron">⌃⌄</span>
           </button>
