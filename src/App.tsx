@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import ollieImage from "./assets/ollie.png";
 import oppoLogo from "./assets/oppo-logo.png";
+import oppoLogoDark from "./assets/oppo-logo-dark.svg";
 import RepairDashboard from "./RepairDashboard";
 
 type IconName =
@@ -58,13 +59,12 @@ const platformMenu: { label: string; icon: IconName; submenu?: string[] }[] = [
   { label: "Dashboard", icon: "grid" },
   { label: "Assembly", icon: "assembly" },
   { label: "Packing", icon: "package" },
-  { label: "Quality", icon: "shield" },
-  { label: "Warehouse", icon: "warehouse", submenu: ["Overview", "Materials", "Clearances"] },
-  { label: "Statistics", icon: "chart" },
+  { label: "QC", icon: "shield" },
+  { label: "Service", icon: "wrench" },
+  { label: "Repair", icon: "wrench", submenu: ["Preassembly", "Rework", "Warranty", "Abnormal"] },
 ];
 
 const managementMenu: { label: string; icon: IconName; submenu?: string[] }[] = [
-  { label: "Repair", icon: "wrench", submenu: ["Preassembly", "Rework", "Warranty", "Abnormal"] },
   { label: "Messages", icon: "message" },
   { label: "Abnormality", icon: "alert" },
   { label: "Settings", icon: "settings" },
@@ -212,7 +212,7 @@ export default function App() {
         {mobileSidebar && <button className="sheet-overlay" aria-label="Close navigation" onClick={() => setMobileSidebar(false)} />}
         <aside className={`sidebar ${mobileSidebar ? "sheet-open" : ""}`}>
           <button className="logo" onClick={() => setSidebarExpanded(true)} data-tooltip="OPPO workspace">
-            <img className="brand-image sidebar-copy" src={oppoLogo} alt="OPPO" />
+            <img className="brand-image sidebar-copy" src={dark ? oppoLogoDark : oppoLogo} alt="OPPO" />
             <img className="ollie-image" src={ollieImage} alt="Ollie" />
             <span className="workspace-chevron">⌃⌄</span>
           </button>
@@ -224,14 +224,22 @@ export default function App() {
                 <div className="nav-entry" key={item.label}>
                   <button data-tooltip={item.label} className={active === item.label ? "active" : ""} onClick={() => {
                     selectMenu(item.label);
-                    if (item.submenu) setWarehouseOpen(!warehouseOpen);
+                    if (item.submenu) {
+                      if (item.label === "Repair") setRepairOpen((value) => !value);
+                      else setWarehouseOpen((value) => !value);
+                    }
                   }}>
                     <Icon name={item.icon} /><span className="sidebar-copy">{item.label}</span>
                     {item.submenu && <Icon name="chevron" size={13} />}
                   </button>
-                  {item.submenu && warehouseOpen && sidebarExpanded && (
+                  {item.submenu && item.label !== "Repair" && warehouseOpen && sidebarExpanded && (
                     <div className="submenu">
                       {item.submenu.map((sub) => <button key={sub} className={sub === "Overview" && active === "Warehouse" ? "current" : ""} onClick={() => selectMenu("Warehouse")}>{sub}</button>)}
+                    </div>
+                  )}
+                  {item.submenu && item.label === "Repair" && repairOpen && sidebarExpanded && (
+                    <div className="submenu repair-submenu">
+                      {item.submenu.map((sub) => <button key={sub} className={active === sub ? "current" : ""} onClick={() => selectMenu(sub)}>{sub}</button>)}
                     </div>
                   )}
                 </div>
