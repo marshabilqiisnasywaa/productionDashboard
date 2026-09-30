@@ -185,10 +185,11 @@ function Preassembly() {
   const [inputOpen,setInputOpen] = useState(false);
   const [values,setValues] = useState<Record<string,number>>({});
   const [toast,setToast] = useState(false);
+  const [showWipTable,setShowWipTable] = useState(false);
   const kpis=useMemo(()=>kpiSeed.map((kpi)=>values[kpi.id]===undefined?kpi:{...kpi,value:values[kpi.id],display:kpi.unit==="pcs"?values[kpi.id].toLocaleString():`${values[kpi.id].toFixed(2)}%`}),[values]);
   const save=(id:string,actual:number)=>{setValues((current)=>({...current,[id]:actual}));setInputOpen(false);setToast(true);window.setTimeout(()=>setToast(false),2600)};
   return <><Header page="Preassembly" onInput={()=>setInputOpen(true)}/><div className="repair-kpis">{kpis.map((kpi)=>{const good=isOnTarget(kpi.value,kpi.target,kpi.direction);return <button className="repair-kpi" key={kpi.id} onClick={()=>setSheetKpi(kpi)}><div className="repair-kpi-top"><span>{kpi.name}</span><span className={`repair-status ${good?"good":"bad"}`}>{good?"On Target":"Off Target"}</span></div><strong>{kpi.display} <small>{kpi.unit}</small></strong><p>Target: {kpi.targetLabel} <b className={good?"good-text":"bad-text"}>{good?"↓":"↑"} {Math.abs(kpi.value-kpi.target).toLocaleString()}</b></p><Sparkline success={good}/></button>})}<button className="repair-kpi issue-kpi" onClick={()=>document.getElementById("quality-issues")?.scrollIntoView({behavior:"smooth"})}><div className="repair-kpi-top"><span>Quality Issue</span><span className="repair-status bad">Needs action</span></div><strong>3 <small>Open</small></strong><p>2 due this week</p><Glyph name="alert"/></button></div>
-    <div className="repair-charts"><div className="repair-panel wide wip-combo"><MetricChart id="wip" title="WIP / Inventory Qty" values={wipActual} target={wipTargets} direction="lower" full/><WipTable/></div><MetricChart id="input" title="Input Rate" values={inputRate} target={1} direction="lower" domain={[0,2.1]}/><MetricChart id="assembly" title="Passrate Preassembly" values={preassemblyRate} target={99} direction="higher" domain={[95,102]}/><MetricChart id="qa" title="QA Pass Rate" values={qaRate} target={99} direction="higher" domain={[95,101]}/><MetricChart id="frame" title="Pass Rate Repair Frame" values={frameRate} target={80} direction="higher" domain={[30,120]}/><MetricChart id="lcd" title="Pass Rate Repair LCD" values={lcdRate} target={80} direction="higher" domain={[50,120]}/><NgProductionCard/><QualityIssues/></div>
+    <div className="repair-charts"><div className="repair-panel wide wip-combo"><div className="repair-card-head"><div><h2>WIP / Inventory Qty</h2><p>Data stok dan performa inventori harian</p></div><button type="button" className={`chart-toggle ${showWipTable ? "active" : ""}`} onClick={()=>setShowWipTable((value)=>!value)}>{showWipTable ? "Sembunyikan Tabel" : "Tampilkan Tabel"}</button></div><MetricChart id="wip" title="WIP / Inventory Qty" values={wipActual} target={wipTargets} direction="lower" full/>{showWipTable && <WipTable/>}</div><MetricChart id="input" title="Input Rate" values={inputRate} target={1} direction="lower" domain={[0,2.1]}/><MetricChart id="assembly" title="Passrate Preassembly" values={preassemblyRate} target={99} direction="higher" domain={[95,102]}/><MetricChart id="qa" title="QA Pass Rate" values={qaRate} target={99} direction="higher" domain={[95,101]}/><MetricChart id="frame" title="Pass Rate Repair Frame" values={frameRate} target={80} direction="higher" domain={[30,120]}/><MetricChart id="lcd" title="Pass Rate Repair LCD" values={lcdRate} target={80} direction="higher" domain={[50,120]}/><NgProductionCard/><QualityIssues/></div>
     {sheetKpi&&<KpiSheet kpi={sheetKpi} onClose={()=>setSheetKpi(null)} onInput={()=>setInputOpen(true)}/>}
     {inputOpen&&<InputDialog onClose={()=>setInputOpen(false)} onSave={save}/>}
     {toast&&<div className="repair-toast"><span>✓</span>Data berhasil disimpan</div>}
@@ -207,12 +208,496 @@ function Warranty() {
   return <><Header page="Warranty" onInput={()=>setDialog(true)}/><div className="repair-kpis two"><button className="repair-kpi"><div className="repair-kpi-top"><span>Input Unit Market</span><span className="repair-status good">Active</span></div><strong>52 <small>units</small></strong><p>Hari ini</p><Sparkline success/></button><button className="repair-kpi"><div className="repair-kpi-top"><span>Phone Off</span><span className="repair-status bad">7 units</span></div><strong>13.5%</strong><p>dari input market</p><Sparkline success={false}/></button></div><div className="repair-charts"><article className="repair-panel"><div className="repair-card-head"><div><h2>Input Unit Market</h2><p>Jumlah unit masuk harian</p></div><button className="repair-primary" onClick={()=>setDialog(true)}><Glyph name="plus"/>Input</button></div><div className="warranty-chart"><ResponsiveContainer><BarChart data={daily}><CartesianGrid vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false}/><Tooltip/><Bar dataKey="input" fill="var(--chart-1)" radius={6}/></BarChart></ResponsiveContainer></div></article><article className="repair-panel"><div className="repair-card-head"><div><h2>Phone Off</h2><p>Temuan phone off harian</p></div><button className="repair-primary" onClick={()=>setDialog(true)}><Glyph name="plus"/>Input</button></div><div className="warranty-chart"><ResponsiveContainer><LineChart data={daily}><CartesianGrid vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false}/><Tooltip/><Line dataKey="off" stroke="var(--chart-5)" strokeWidth={2}/></LineChart></ResponsiveContainer></div></article><article className="repair-panel wide"><div className="repair-card-head"><div><h2>Warranty recap</h2><p>Rekap unit berdasarkan tanggal dan model</p></div></div><div className="repair-table-scroll"><table className="repair-data-table"><thead><tr><th>Tanggal</th><th>Model</th><th>Input Unit Market</th><th>Phone Off</th><th>Keterangan</th></tr></thead><tbody>{daily.map((row)=><tr key={row.day}><td>{row.day}</td><td>OPPO A5 Pro</td><td>{row.input}</td><td className={row.off>5?"fail-cell":"pass-cell"}>{row.off}</td><td>Warranty inspection</td></tr>)}</tbody></table></div></article></div>{dialog&&<InputDialog onClose={()=>setDialog(false)} onSave={()=>setDialog(false)}/>}</>;
 }
 
+function AbnormalPage() {
+  const rows = [
+    { id: "ABN-2026-001", date: "2026-10-04", name: "Kekurangan Material Bracket kode 612210001971 (-223pcs)", workshop: "Workshop 5", proposer: "Galuh / Irfan N", source: "After Occurring", frequency: "Long processing cycle", track: "Teknis + Management", status: "Closed", attachment: 3 },
+    { id: "ABN-2026-002", date: "2026-10-01", name: "Keterlambatan pengiriman komponen LCD", workshop: "Workshop 3", proposer: "Ayu", source: "Current Occurring", frequency: "Frequent occurrence", track: "Teknis", status: "Open", attachment: 1 },
+    { id: "ABN-2026-003", date: "2026-09-26", name: "Assembly line lag akibat tool off-spec", workshop: "Workshop 2", proposer: "Bayu", source: "Before Occurring", frequency: "Others", track: "Management", status: "On Progress", attachment: 2 },
+    { id: "ABN-2026-004", date: "2026-09-18", name: "Defect pada top cover karena handling", workshop: "Workshop 1", proposer: "Candra", source: "Other", frequency: "Frequent occurrence", track: "Teknis", status: "Draft", attachment: 4 },
+  ];
+
+  const [selectedId, setSelectedId] = useState(rows[0].id);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [trackFilter, setTrackFilter] = useState("All");
+  const [openWizard, setOpenWizard] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const filtered = rows.filter((item) => {
+    const q = query.trim().toLowerCase();
+    const okQuery = !q || item.name.toLowerCase().includes(q) || item.id.toLowerCase().includes(q);
+    const okStatus = statusFilter === "All" || item.status === statusFilter;
+    const okTrack = trackFilter === "All" || item.track.toLowerCase().includes(trackFilter.toLowerCase());
+    return okQuery && okStatus && okTrack;
+  });
+
+  const selected = rows.find((item) => item.id === selectedId) ?? rows[0];
+
+  const summary = {
+    total: rows.length,
+    open: rows.filter((item) => item.status === "Open").length,
+    progress: rows.filter((item) => item.status === "On Progress").length,
+    closed: rows.filter((item) => item.status === "Closed").length,
+    avg: 4.8,
+  };
+
+  const monthData = [
+    { month: "Jan", teknis: 3, management: 2 },
+    { month: "Feb", teknis: 5, management: 3 },
+    { month: "Mar", teknis: 4, management: 2 },
+    { month: "Apr", teknis: 7, management: 4 },
+    { month: "May", teknis: 6, management: 5 },
+    { month: "Jun", teknis: 8, management: 6 },
+  ];
+
+  const donut = [
+    { label: "Before Occurring", value: 12, color: "var(--chart-1)" },
+    { label: "Current Occurring", value: 19, color: "var(--chart-2)" },
+    { label: "After Occurring", value: 26, color: "var(--chart-3)" },
+    { label: "Other", value: 8, color: "var(--chart-5)" },
+  ];
+
+  if (openWizard) return <AbnormalWizard onQuit={() => setOpenWizard(false)} />;
+  if (detailOpen) return <AbnormalDetail abnormal={selected} onBack={() => setDetailOpen(false)} />;
+
+  return <div className="abnormal-page">
+    <header className="abnormal-header">
+      <div>
+        <div className="abnormal-breadcrumb">Repair / Abnormal</div>
+        <h1>Abnormal Repair</h1>
+      </div>
+      <div className="abnormal-actions">
+        <button className="repair-outline"><Glyph name="download"/>Export</button>
+        <button className="repair-primary" onClick={() => setOpenWizard(true)}><Glyph name="plus"/>Abnormal Baru</button>
+      </div>
+    </header>
+
+    <div className="abnormal-kpi-grid">
+      <button className="abnormal-kpi active" onClick={() => setStatusFilter("All")}>
+        <span>Total Abnormal</span>
+        <strong>{summary.total}</strong>
+        <small>Semua case</small>
+      </button>
+      <button className="abnormal-kpi" onClick={() => setStatusFilter("Open")}>
+        <span>Open</span>
+        <strong>{summary.open}</strong>
+        <small>Butuh action</small>
+      </button>
+      <button className="abnormal-kpi" onClick={() => setStatusFilter("On Progress")}>
+        <span>On Progress</span>
+        <strong>{summary.progress}</strong>
+        <small>Proses</small>
+      </button>
+      <button className="abnormal-kpi" onClick={() => setStatusFilter("Closed")}>
+        <span>Closed</span>
+        <strong>{summary.closed}</strong>
+        <small>Done</small>
+      </button>
+      <button className="abnormal-kpi">
+        <span>Rata-rata Hari Penyelesaian</span>
+        <strong>{summary.avg.toFixed(1)}d</strong>
+        <small>Keluar target</small>
+      </button>
+    </div>
+
+    <div className="abnormal-charts-grid">
+      <article className="abnormal-panel">
+        <div className="repair-card-head"><div><h2>Abnormal per bulan</h2><p>Teknis vs Management</p></div></div>
+        <div className="abnormal-chart-box">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={monthData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <CartesianGrid vertical={false} stroke="var(--line)"/>
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "var(--muted)" }}/>
+              <Tooltip/>
+              <Legend/>
+              <Bar dataKey="teknis" name="Teknis" fill="var(--chart-1)" radius={[4,4,0,0]} />
+              <Bar dataKey="management" name="Management" fill="var(--chart-5)" radius={[4,4,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </article>
+
+      <article className="abnormal-panel">
+        <div className="repair-card-head"><div><h2>Exception source</h2><p>Before / Current / After / Other</p></div></div>
+        <div className="abnormal-donut-box">
+          <div className="abnormal-donut" style={{ background: "conic-gradient(var(--chart-1) 0 30%, var(--chart-2) 30% 52%, var(--chart-3) 52% 81%, var(--chart-5) 81% 100%)" }}>
+            <div><strong>85</strong><small>cases</small></div>
+          </div>
+          <div className="abnormal-legend-list">
+            {donut.map((item) => (
+              <div key={item.label}><span><i style={{ background: item.color }} />{item.label}</span><strong>{item.value}</strong></div>
+            ))}
+          </div>
+        </div>
+      </article>
+
+      <article className="abnormal-panel">
+        <div className="repair-card-head"><div><h2>Frequency</h2><p>Distribusi kejadian</p></div></div>
+        <div className="abnormal-frequency-box">
+          {[
+            { label: "Long processing cycle", value: 34 },
+            { label: "Frequent occurrence", value: 22 },
+            { label: "Others", value: 14 },
+          ].map((item) => (
+            <div key={item.label} className="frequency-row">
+              <span>{item.label}</span>
+              <div className="frequency-track"><i style={{ width: `${item.value}%` }} /></div>
+              <strong>{item.value}%</strong>
+            </div>
+          ))}
+        </div>
+      </article>
+    </div>
+
+    <article className="abnormal-panel table-panel">
+      <div className="repair-card-head abnormal-table-head"><div><h2>Daftar Abnormal</h2><p>Pencarian, filter, status</p></div></div>
+      <div className="abnormal-filter-row">
+        <label className="abnormal-search"><Glyph name="search"/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari abnormal..." /></label>
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <option value="All">Semua status</option>
+          <option value="Draft">Draft</option>
+          <option value="Open">Open</option>
+          <option value="On Progress">On Progress</option>
+          <option value="Closed">Closed</option>
+        </select>
+        <select value={trackFilter} onChange={(event) => setTrackFilter(event.target.value)}>
+          <option value="All">Semua track</option>
+          <option value="Teknis">Teknis</option>
+          <option value="Management">Management</option>
+          <option value="Keduanya">Keduanya</option>
+        </select>
+      </div>
+
+      <div className="repair-table-scroll">
+        <table className="repair-data-table abnormal-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Tanggal</th>
+              <th>Abnormal Name</th>
+              <th>Workshop Line</th>
+              <th>Proposer</th>
+              <th>Exception source</th>
+              <th>Frequency</th>
+              <th>Track</th>
+              <th>Status</th>
+              <th>Attachment</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((item) => (
+              <tr key={item.id} onClick={() => { setSelectedId(item.id); setDetailOpen(true); }}>
+                <td><strong>{item.id}</strong></td>
+                <td>{item.date}</td>
+                <td><strong>{item.name}</strong></td>
+                <td>{item.workshop}</td>
+                <td>{item.proposer}</td>
+                <td>{item.source}</td>
+                <td>{item.frequency}</td>
+                <td><span className="abnormal-track-badge">{item.track}</span></td>
+                <td><span className={`repair-status ${item.status === "Closed" ? "good" : item.status === "Open" ? "bad" : ""}`}>{item.status}</span></td>
+                <td>{item.attachment} <Glyph name="alert"/></td>
+                <td><button className="mini-link" type="button" onClick={(event) => { event.stopPropagation(); setSelectedId(item.id); setDetailOpen(true); }}>Lihat</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="abnormal-pagination">
+        <button type="button">Prev</button>
+        <span>1 / 2</span>
+        <button type="button">Next</button>
+      </div>
+    </article>
+  </div>;
+}
+
+function AbnormalDetail({ abnormal, onBack }: { abnormal: { id: string; date: string; name: string; workshop: string; proposer: string; source: string; frequency: string; track: string; status: string; attachment: number }; onBack: () => void }) {
+  return <div className="abnormal-page detail-page">
+    <header className="abnormal-header detail-header">
+      <div>
+        <div className="abnormal-breadcrumb">Repair / Abnormal / {abnormal.id}</div>
+        <h1>{abnormal.name}</h1>
+      </div>
+      <div className="abnormal-actions">
+        <button className="repair-outline" onClick={onBack}>Kembali</button>
+        <button className="repair-primary">Edit</button>
+      </div>
+    </header>
+
+    <div className="detail-grid">
+      <div className="detail-main">
+        <div className="abnormal-card info-grid">
+          <div><label>Workshop Line</label><strong>{abnormal.workshop}</strong></div>
+          <div><label>Proposer</label><strong>{abnormal.proposer}</strong></div>
+          <div><label>Tanggal</label><strong>{abnormal.date}</strong></div>
+          <div><label>Exception source</label><span className="abnormal-chip source-chip">{abnormal.source}</span></div>
+          <div><label>Frequency</label><span className="abnormal-chip">{abnormal.frequency}</span></div>
+          <div><label>Status</label><span className={`repair-status ${abnormal.status === "Closed" ? "good" : "bad"}`}>{abnormal.status}</span></div>
+        </div>
+
+        <div className="abnormal-card">
+          <h3>Problem Statement</h3>
+          <p>Tgl 4/10, line TAC20501 Zenit kekurangan material bracket kode 612210001971 (-223pcs) mengakibatkan plan mundur dan lead time naik.</p>
+        </div>
+
+        <div className="abnormal-card why-tree">
+          <h3>5 Why Analysis</h3>
+          <div className="why-columns">
+            <div className="why-column">
+              <div className="why-root">Problem</div>
+              <div className="why-node"><span className="why-badge">Why 1</span><p>Material bracket tidak tersedia pada saat line running.</p></div>
+              <div className="why-node"><span className="why-badge">Why 2</span><p>Reorder dilakukan terlambat dan pengiriman supplier tidak sesuai jadwal.</p></div>
+              <div className="why-node root-cause"><span className="why-badge">ROOT CAUSE</span><p>Stock planning tidak memadai untuk kode material 612210001971.</p></div>
+            </div>
+            <div className="why-column">
+              <div className="why-root">Management</div>
+              <div className="why-node"><span className="why-badge">Why 1</span><p>Review replenishment dilakukan tanpa escalation cepat.</p></div>
+              <div className="why-node"><span className="why-badge">Why 2</span><p>Lead time supplier belum di-update ke owner line.</p></div>
+              <div className="why-node root-cause"><span className="why-badge">ROOT CAUSE</span><p>Proses review vendor dan stock buffer belum terintegrasi.</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="abnormal-card">
+          <h3>Risk & Evaluation</h3>
+          <ol>
+            <li>Risiko keterlambatan produksi pada line TAC20501.</li>
+            <li>Potensi kenaikan backlog produksi 6–8%.</li>
+            <li>Pengaruh ke service SLA customer.</li>
+          </ol>
+        </div>
+      </div>
+
+      <aside className="detail-side">
+        <div className="abnormal-card">
+          <h3>Attachment</h3>
+          <ul className="attachment-list">
+            <li>IMG_20261004_1.jpg</li>
+            <li>IMG_20261004_2.png</li>
+            <li>IMG_20261004_3.png</li>
+          </ul>
+        </div>
+        <div className="abnormal-card">
+          <h3>Riwayat Aktivitas</h3>
+          <ul className="timeline-list">
+            <li><strong>2026-10-04</strong><span>Dibuat oleh Galuh</span></li>
+            <li><strong>2026-10-05</strong><span>Status diubah ke Closed</span></li>
+            <li><strong>2026-10-06</strong><span>Upload foto evidence</span></li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>;
+}
+
+function AbnormalWizard({ onQuit }: { onQuit: () => void }) {
+  const [step, setStep] = useState(1);
+  const [saved, setSaved] = useState(true);
+  const [source, setSource] = useState("After Occurring");
+  const [frequency, setFrequency] = useState("Long processing cycle");
+  const [problemStatement, setProblemStatement] = useState("Tgl 4/10, line TAC20501 Zenit kekurangan material bracket kode 612210001971 (-223pcs) mengakibatkan plan mundur");
+  const [technicalWhys, setTechnicalWhys] = useState([
+    { id: 1, answer: "Material bracket tidak tersedia pada saat line running", root: false },
+    { id: 2, answer: "Reorder terlambat dan pengiriman supplier tidak sesuai jadwal", root: true },
+  ]);
+  const [managementWhys, setManagementWhys] = useState([
+    { id: 1, answer: "Review replenishment dilakukan tanpa eskalasi cepat", root: false },
+    { id: 2, answer: "Lead time supplier belum di-update ke owner line", root: false },
+  ]);
+  const [risks, setRisks] = useState(["Keterlambatan produksi", "Backlog meningkat", "SLA customer berisiko"]);
+  const [conclusions, setConclusions] = useState(["Stock planning perlu revisi", "Supplier escalation harus lebih cepat"]);
+  const [actions, setActions] = useState([{ text: "Urgent review BOM dan stock buffer", pic: "Galuh", dueDate: "2026-10-08", status: "Proses" }]);
+
+  const addWhy = (type: "technical" | "management") => {
+    if (type === "technical") {
+      setTechnicalWhys((current) => [...current, { id: current.length + 1, answer: "", root: false }]);
+    } else {
+      setManagementWhys((current) => [...current, { id: current.length + 1, answer: "", root: false }]);
+    }
+    setSaved(false);
+  };
+
+  const updateWhy = (type: "technical" | "management", id: number, value: string) => {
+    if (type === "technical") {
+      setTechnicalWhys((current) => current.map((item) => item.id === id ? { ...item, answer: value } : item));
+    } else {
+      setManagementWhys((current) => current.map((item) => item.id === id ? { ...item, answer: value } : item));
+    }
+    setSaved(false);
+  };
+
+  const setRoot = (type: "technical" | "management", id: number) => {
+    if (type === "technical") {
+      setTechnicalWhys((current) => current.map((item) => ({ ...item, root: item.id === id }))); 
+    } else {
+      setManagementWhys((current) => current.map((item) => ({ ...item, root: item.id === id }))); 
+    }
+    setSaved(false);
+  };
+
+  const removeWhy = (type: "technical" | "management", id: number) => {
+    if (type === "technical") setTechnicalWhys((current) => current.filter((item) => item.id !== id));
+    else setManagementWhys((current) => current.filter((item) => item.id !== id));
+    setSaved(false);
+  };
+
+  const addListRow = (list: "risk" | "conclusion") => {
+    if (list === "risk") setRisks((current) => [...current, ""]);
+    else setConclusions((current) => [...current, ""]);
+  };
+
+  const updateListRow = (list: "risk" | "conclusion", index: number, value: string) => {
+    if (list === "risk") setRisks((current) => current.map((item, idx) => idx === index ? value : item));
+    else setConclusions((current) => current.map((item, idx) => idx === index ? value : item));
+  };
+
+  const addAction = () => setActions((current) => [...current, { text: "", pic: "", dueDate: "", status: "Belum" }]);
+  const updateAction = (index: number, field: keyof { text: string; pic: string; dueDate: string; status: string }, value: string) => {
+    setActions((current) => current.map((item, idx) => idx === index ? { ...item, [field]: value } : item));
+  };
+
+  const steps = ["Informasi Umum", "5 Why Teknis", "5 Why Management", "Kesimpulan", "Review"];
+
+  return <div className="abnormal-wizard-shell">
+    <div className="abnormal-wizard-header">
+      <div>
+        <div className="abnormal-breadcrumb">Repair / Abnormal / Baru</div>
+        <h1>Abnormal Baru</h1>
+      </div>
+      <div className="abnormal-actions">
+        <span className="autosave-indicator">{saved ? "Tersimpan otomatis" : "Belum tersimpan"}</span>
+        <button className="repair-outline" onClick={onQuit}>Batal</button>
+      </div>
+    </div>
+
+    <div className="wizard-stepper">
+      {steps.map((item, index) => (
+        <button type="button" key={item} className={step === index + 1 ? "active" : ""} onClick={() => setStep(index + 1)}>
+          <span>{index + 1}</span>
+          {item}
+        </button>
+      ))}
+    </div>
+
+    <div className="abnormal-wizard-body">
+      {step === 1 && <div className="form-grid-large">
+        <label>Abnormal Name<input value={problemStatement} onChange={(event) => { setProblemStatement(event.target.value); setSaved(false); }} /></label>
+        <label>Workshop Line<select value="Workshop 5" onChange={() => setSaved(false)}><option>Workshop 5</option><option>Workshop 3</option><option>Workshop 2</option></select></label>
+        <label>Proposer<input value="Galuh / Irfan N" onChange={() => setSaved(false)} /></label>
+        <label>Tanggal kejadian<input type="date" value="2026-10-04" onChange={() => setSaved(false)} /></label>
+        <label className="segmented-block">Exception source
+          <div className="segmented-row">
+            {['Before Occurring', 'Current Occurring', 'After Occurring', 'Other'].map((item) => (
+              <button type="button" key={item} className={source === item ? 'active' : ''} onClick={() => { setSource(item); setSaved(false); }}>{item}</button>
+            ))}
+          </div>
+        </label>
+        <label className="segmented-block">Frequency
+          <div className="segmented-row">
+            {['Frequent occurrence', 'Long processing cycle', 'Others'].map((item) => (
+              <button type="button" key={item} className={frequency === item ? 'active' : ''} onClick={() => { setFrequency(item); setSaved(false); }}>{item}</button>
+            ))}
+          </div>
+        </label>
+        <label className="full-span">Problem Statement<textarea rows={5} value={problemStatement} onChange={(event) => { setProblemStatement(event.target.value); setSaved(false); }} /></label>
+        <div className="full-span upload-box"><h3>Foto / attachment kondisi awal</h3><input type="file" multiple accept="image/png,image/jpeg" /><div className="thumb-stack"><span>initial-line.jpg</span><span>warning-1.png</span></div></div>
+      </div>}
+
+      {step === 2 && <div className="why-form-step">
+        <div className="abnormal-card why-readonly"><strong>Problem Statement</strong><p>{problemStatement}</p></div>
+        {technicalWhys.map((item, index) => (
+          <div key={item.id} className={`why-entry ${item.root ? 'root-entry' : ''}`}>
+            <div className="why-entry-head"><h3>Why {index + 1}: Kenapa {index === 0 ? 'masalah ini terjadi?' : technicalWhys[index - 1].answer || 'jawaban sebelumnya'} terjadi?</h3>{technicalWhys.length > 1 && <button type="button" onClick={() => removeWhy('technical', item.id)}>Hapus</button>}</div>
+            <textarea value={item.answer} onChange={(event) => updateWhy('technical', item.id, event.target.value)} placeholder="Jawaban why..." rows={3} />
+            <div className="why-upload-area"><input type="file" multiple accept="image/png,image/jpeg" /><span>Upload foto</span></div>
+            {item.root ? <div className="root-indicator">ROOT CAUSE</div> : <label className="root-toggle"><input type="checkbox" checked={item.root} onChange={() => setRoot('technical', item.id)} /> Ini akar masalah (Root Cause)</label>}
+          </div>
+        ))}
+        {!technicalWhys.some((item) => item.root) && technicalWhys.length < 5 && <button type="button" className="repair-primary inline-button" onClick={() => addWhy('technical')}>+ Tambah Why berikutnya</button>}
+      </div>}
+
+      {step === 3 && <div className="why-form-step">
+        <div className="abnormal-card why-readonly"><strong>Problem Statement</strong><p>{problemStatement}</p></div>
+        {managementWhys.map((item, index) => (
+          <div key={item.id} className={`why-entry ${item.root ? 'root-entry' : ''}`}>
+            <div className="why-entry-head"><h3>Why {index + 1}: Kenapa {index === 0 ? 'masalah ini terjadi?' : managementWhys[index - 1].answer || 'jawaban sebelumnya'} terjadi?</h3>{managementWhys.length > 1 && <button type="button" onClick={() => removeWhy('management', item.id)}>Hapus</button>}</div>
+            <textarea value={item.answer} onChange={(event) => updateWhy('management', item.id, event.target.value)} placeholder="Jawaban why..." rows={3} />
+            <div className="why-upload-area"><input type="file" multiple accept="image/png,image/jpeg" /><span>Upload foto</span></div>
+            {item.root ? <div className="root-indicator">ROOT CAUSE</div> : <label className="root-toggle"><input type="checkbox" checked={item.root} onChange={() => setRoot('management', item.id)} /> Ini akar masalah (Root Cause)</label>}
+          </div>
+        ))}
+        {!managementWhys.some((item) => item.root) && managementWhys.length < 5 && <button type="button" className="repair-primary inline-button" onClick={() => addWhy('management')}>+ Tambah Why berikutnya</button>}
+      </div>}
+
+      {step === 4 && <div className="summary-form-step">
+        <div className="summary-stack">
+          <div className="abnormal-card">
+            <h3>Risk & Evaluation</h3>
+            {risks.map((item, index) => (
+              <div key={index} className="list-row">
+                <input value={item} onChange={(event) => updateListRow('risk', index, event.target.value)} />
+                <button type="button" onClick={() => setRisks((current) => current.filter((_, idx) => idx !== index))}>Hapus</button>
+              </div>
+            ))}
+            <button type="button" className="repair-primary inline-button" onClick={() => addListRow('risk')}>+ Tambah poin</button>
+          </div>
+
+          <div className="abnormal-card">
+            <h3>Kesimpulan</h3>
+            {conclusions.map((item, index) => (
+              <div key={index} className="list-row">
+                <input value={item} onChange={(event) => updateListRow('conclusion', index, event.target.value)} />
+                <button type="button" onClick={() => setConclusions((current) => current.filter((_, idx) => idx !== index))}>Hapus</button>
+              </div>
+            ))}
+            <button type="button" className="repair-primary inline-button" onClick={() => addListRow('conclusion')}>+ Tambah poin</button>
+          </div>
+
+          <div className="abnormal-card">
+            <h3>Short-term Solution</h3>
+            {actions.map((item, index) => (
+              <div key={index} className="action-row">
+                <input value={item.text} onChange={(event) => updateAction(index, 'text', event.target.value)} placeholder="Tindakan" />
+                <select value={item.pic} onChange={(event) => updateAction(index, 'pic', event.target.value)}><option value="">PIC</option><option>Galuh</option><option>Irfan N</option><option>Bayu</option></select>
+                <input type="date" value={item.dueDate} onChange={(event) => updateAction(index, 'dueDate', event.target.value)} />
+                <select value={item.status} onChange={(event) => updateAction(index, 'status', event.target.value)}><option>Belum</option><option>Proses</option><option>Selesai</option></select>
+                <button type="button" onClick={() => setActions((current) => current.filter((_, idx) => idx !== index))}>Hapus</button>
+              </div>
+            ))}
+            <button type="button" className="repair-primary inline-button" onClick={addAction}>+ Tambah item</button>
+          </div>
+        </div>
+      </div>}
+
+      {step === 5 && <div className="review-step">
+        <div className="abnormal-card review-box">
+          <h3>Review dan Submit</h3>
+          <p><strong>Abnormal Name:</strong> {problemStatement}</p>
+          <p><strong>Source:</strong> {source}</p>
+          <p><strong>Frequency:</strong> {frequency}</p>
+          <div className="review-why-block"><h4>5 Why Teknis</h4>{technicalWhys.map((item, index) => <div key={item.id} className="review-why-item"><span>Why {index + 1}</span><p>{item.answer || "Belum diisi"}</p></div>)}</div>
+          <div className="review-why-block"><h4>5 Why Management</h4>{managementWhys.map((item, index) => <div key={item.id} className="review-why-item"><span>Why {index + 1}</span><p>{item.answer || "Belum diisi"}</p></div>)}</div>
+        </div>
+      </div>}
+    </div>
+
+    <footer className="abnormal-footer">
+      <button type="button" className="repair-outline" onClick={() => setStep((current) => Math.max(1, current - 1))} disabled={step === 1}>Kembali</button>
+      <button type="button" className="repair-outline" onClick={() => setSaved(true)}>Simpan Draft</button>
+      <button type="button" className="repair-primary" onClick={() => setStep((current) => Math.min(5, current + 1))}>{step === 5 ? "Submit" : "Lanjut"}</button>
+    </footer>
+  </div>;
+}
+
 export default function RepairDashboard({ page }: { page: RepairPage }) {
   const [loading,setLoading]=useState(true);
   useEffect(()=>{setLoading(true);const timer=window.setTimeout(()=>setLoading(false),450);return()=>window.clearTimeout(timer)},[page]);
   if(loading)return <div className="repair-skeleton"><div className="skeleton-title"/><div className="skeleton-kpis">{Array.from({length:8},(_,index)=><i key={index}/>)}</div><div className="skeleton-panels"><i/><i/><i/></div></div>;
   if (page === "Rework") return <Rework/>;
   if (page === "Warranty") return <Warranty/>;
-  if (page === "Abnormal") return <div className="repair-empty"><Glyph name="alert"/><h1>Abnormal</h1><p>Slot menu sudah disiapkan. Halaman akan ditambahkan pada tahap berikutnya.</p></div>;
+  if (page === "Abnormal") return <AbnormalPage/>;
   return <Preassembly/>;
 }
