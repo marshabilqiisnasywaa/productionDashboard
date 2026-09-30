@@ -1,0 +1,10 @@
+{
+  "description": "This web application allows users to create personalized designs effortlessly, catering to individuals and businesses seeking custom visual solutions.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
