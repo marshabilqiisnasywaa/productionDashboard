@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
+  Clock3,
+  Download,
+  Filter,
+  PencilLine,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import {
   Bar,
   BarChart,
   CartesianGrid,
@@ -107,12 +118,12 @@ function MetricChart({ id, title, values, target, direction, domain, full = fals
     <div className="repair-card-head"><div><h2>{title}</h2><p>Performa aktual terhadap target • 2025</p></div><label className="label-toggle"><input type="checkbox" checked={labels} onChange={(event) => setLabels(event.target.checked)}/><span/>Tampilkan label</label></div>
     <div className="line-chart-wrap">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 18, right: 18, left: 0, bottom: 0 }}>
+        <LineChart data={data} margin={{ top: 18, right: 18, left: 6, bottom: 8 }}>
           <CartesianGrid vertical={false}/>
           <XAxis dataKey="period" axisLine={false} tickLine={false} tickMargin={10} interval="preserveStartEnd"/>
-          <YAxis domain={domain ?? ["auto", "auto"]} axisLine={false} tickLine={false} width={45}/>
+          <YAxis domain={domain ?? ["auto", "auto"]} axisLine={false} tickLine={false} width={48}/>
           <Tooltip content={<RepairTooltip/>} cursor={{ stroke: "var(--line)" }}/>
-          <Legend/>
+          <Legend wrapperStyle={{ paddingTop: 8, marginTop: 0 }} iconType="line" />
           <Line type="natural" dataKey="target" name="Target" stroke="var(--success)" strokeDasharray="5 5" dot={false} strokeWidth={2} connectNulls={false}/>
           <Line type="natural" dataKey="actual" name="Actual" stroke="var(--chart-1)" strokeWidth={2} connectNulls={false} dot={(props) => <StatusDot {...props} direction={direction}/>}>
             {labels && <LabelList dataKey="actual" position="top" className="repair-point-label"/>}
@@ -208,210 +219,434 @@ function Warranty() {
   return <><Header page="Warranty" onInput={()=>setDialog(true)}/><div className="repair-kpis two"><button className="repair-kpi"><div className="repair-kpi-top"><span>Input Unit Market</span><span className="repair-status good">Active</span></div><strong>52 <small>units</small></strong><p>Hari ini</p><Sparkline success/></button><button className="repair-kpi"><div className="repair-kpi-top"><span>Phone Off</span><span className="repair-status bad">7 units</span></div><strong>13.5%</strong><p>dari input market</p><Sparkline success={false}/></button></div><div className="repair-charts"><article className="repair-panel"><div className="repair-card-head"><div><h2>Input Unit Market</h2><p>Jumlah unit masuk harian</p></div><button className="repair-primary" onClick={()=>setDialog(true)}><Glyph name="plus"/>Input</button></div><div className="warranty-chart"><ResponsiveContainer><BarChart data={daily}><CartesianGrid vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false}/><Tooltip/><Bar dataKey="input" fill="var(--chart-1)" radius={6}/></BarChart></ResponsiveContainer></div></article><article className="repair-panel"><div className="repair-card-head"><div><h2>Phone Off</h2><p>Temuan phone off harian</p></div><button className="repair-primary" onClick={()=>setDialog(true)}><Glyph name="plus"/>Input</button></div><div className="warranty-chart"><ResponsiveContainer><LineChart data={daily}><CartesianGrid vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false}/><Tooltip/><Line dataKey="off" stroke="var(--chart-5)" strokeWidth={2}/></LineChart></ResponsiveContainer></div></article><article className="repair-panel wide"><div className="repair-card-head"><div><h2>Warranty recap</h2><p>Rekap unit berdasarkan tanggal dan model</p></div></div><div className="repair-table-scroll"><table className="repair-data-table"><thead><tr><th>Tanggal</th><th>Model</th><th>Input Unit Market</th><th>Phone Off</th><th>Keterangan</th></tr></thead><tbody>{daily.map((row)=><tr key={row.day}><td>{row.day}</td><td>OPPO A5 Pro</td><td>{row.input}</td><td className={row.off>5?"fail-cell":"pass-cell"}>{row.off}</td><td>Warranty inspection</td></tr>)}</tbody></table></div></article></div>{dialog&&<InputDialog onClose={()=>setDialog(false)} onSave={()=>setDialog(false)}/>}</>;
 }
 
-function AbnormalPage() {
-  const rows = [
-    { id: "ABN-2026-001", date: "2026-10-04", name: "Kekurangan Material Bracket kode 612210001971 (-223pcs)", workshop: "Workshop 5", proposer: "Galuh / Irfan N", source: "After Occurring", frequency: "Long processing cycle", track: "Teknis + Management", status: "Closed", attachment: 3 },
-    { id: "ABN-2026-002", date: "2026-10-01", name: "Keterlambatan pengiriman komponen LCD", workshop: "Workshop 3", proposer: "Ayu", source: "Current Occurring", frequency: "Frequent occurrence", track: "Teknis", status: "Open", attachment: 1 },
-    { id: "ABN-2026-003", date: "2026-09-26", name: "Assembly line lag akibat tool off-spec", workshop: "Workshop 2", proposer: "Bayu", source: "Before Occurring", frequency: "Others", track: "Management", status: "On Progress", attachment: 2 },
-    { id: "ABN-2026-004", date: "2026-09-18", name: "Defect pada top cover karena handling", workshop: "Workshop 1", proposer: "Candra", source: "Other", frequency: "Frequent occurrence", track: "Teknis", status: "Draft", attachment: 4 },
-  ];
+type AbnormalStatus = "Open" | "In Progress" | "Closed" | "Draft";
 
-  const [selectedId, setSelectedId] = useState(rows[0].id);
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [trackFilter, setTrackFilter] = useState("All");
-  const [openWizard, setOpenWizard] = useState(false);
-  const [detailOpen, setDetailOpen] = useState(false);
+type AbnormalRecord = {
+  id: string;
+  createdAt: string;
+  title: string;
+  area: string;
+  source: string;
+  category: string;
+  status: AbnormalStatus;
+  owner: string;
+  description: string;
+};
 
-  const filtered = rows.filter((item) => {
-    const q = query.trim().toLowerCase();
-    const okQuery = !q || item.name.toLowerCase().includes(q) || item.id.toLowerCase().includes(q);
-    const okStatus = statusFilter === "All" || item.status === statusFilter;
-    const okTrack = trackFilter === "All" || item.track.toLowerCase().includes(trackFilter.toLowerCase());
-    return okQuery && okStatus && okTrack;
-  });
+const abnormalSeed: AbnormalRecord[] = [
+  {
+    id: "ABN-004",
+    createdAt: "2026-10-04 09:15",
+    title: "Bracket material shortage in line TAC20501",
+    area: "Workshop 5",
+    source: "After Occurring",
+    category: "Material",
+    status: "Closed",
+    owner: "Galuh",
+    description: "Shortage of bracket code 612210001971 caused delayed plan and line waiting time.",
+  },
+  {
+    id: "ABN-003",
+    createdAt: "2026-10-01 11:42",
+    title: "LCD component delivery delay",
+    area: "Workshop 3",
+    source: "Current Occurring",
+    category: "Supplier",
+    status: "Open",
+    owner: "Ayu",
+    description: "Component arrival missed the planned schedule and affected assembly throughput.",
+  },
+  {
+    id: "ABN-002",
+    createdAt: "2026-09-26 14:20",
+    title: "Assembly line lag due to tool off-spec",
+    area: "Workshop 2",
+    source: "Before Occurring",
+    category: "Machine",
+    status: "In Progress",
+    owner: "Bayu",
+    description: "Offset tools created unstable output before the corrective maintenance action.",
+  },
+  {
+    id: "ABN-001",
+    createdAt: "2026-09-18 08:55",
+    title: "Top cover defect caused by handling",
+    area: "Workshop 1",
+    source: "Other",
+    category: "Method",
+    status: "Draft",
+    owner: "Candra",
+    description: "Handling damage increased rework volume and created cosmetic defects on finished goods.",
+  },
+];
 
-  const selected = rows.find((item) => item.id === selectedId) ?? rows[0];
+const abnormalStatusClass: Record<AbnormalStatus, string> = {
+  Open: "status-open",
+  "In Progress": "status-progress",
+  Closed: "status-closed",
+  Draft: "status-draft",
+};
 
-  const summary = {
-    total: rows.length,
-    open: rows.filter((item) => item.status === "Open").length,
-    progress: rows.filter((item) => item.status === "On Progress").length,
-    closed: rows.filter((item) => item.status === "Closed").length,
-    avg: 4.8,
-  };
+function formatDateTime(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
 
-  const monthData = [
-    { month: "Jan", teknis: 3, management: 2 },
-    { month: "Feb", teknis: 5, management: 3 },
-    { month: "Mar", teknis: 4, management: 2 },
-    { month: "Apr", teknis: 7, management: 4 },
-    { month: "May", teknis: 6, management: 5 },
-    { month: "Jun", teknis: 8, management: 6 },
-  ];
-
-  const donut = [
-    { label: "Before Occurring", value: 12, color: "var(--chart-1)" },
-    { label: "Current Occurring", value: 19, color: "var(--chart-2)" },
-    { label: "After Occurring", value: 26, color: "var(--chart-3)" },
-    { label: "Other", value: 8, color: "var(--chart-5)" },
-  ];
-
-  if (openWizard) return <AbnormalWizard onQuit={() => setOpenWizard(false)} />;
-  if (detailOpen) return <AbnormalDetail abnormal={selected} onBack={() => setDetailOpen(false)} />;
-
-  return <div className="abnormal-page">
-    <header className="abnormal-header">
+function AbnormalPageHeader() {
+  return (
+    <header className="qc-page-header">
       <div>
-        <div className="abnormal-breadcrumb">Repair / Abnormal</div>
-        <h1>Abnormal Repair</h1>
+        <div className="qc-kicker">ABNORMALITY</div>
+        <h1>Abnormality</h1>
+        <p>Track unresolved nonconformities and quality exceptions across production lines.</p>
       </div>
-      <div className="abnormal-actions">
-        <button className="repair-outline"><Glyph name="download"/>Export</button>
-        <button className="repair-primary" onClick={() => setOpenWizard(true)}><Glyph name="plus"/>Abnormal Baru</button>
+      <div className="qc-toolbar">
+        <div className="qc-live">
+          <span className="live-dot" />
+          <span>PIC: Yusriyadi</span>
+        </div>
+        <button className="qc-secondary-button" type="button">30 Sep 2026</button>
+        <button className="qc-primary-button" type="button">
+          <Download size={14} />
+          Export
+        </button>
       </div>
     </header>
+  );
+}
 
-    <div className="abnormal-kpi-grid">
-      <button className="abnormal-kpi active" onClick={() => setStatusFilter("All")}>
-        <span>Total Abnormal</span>
-        <strong>{summary.total}</strong>
-        <small>Semua case</small>
-      </button>
-      <button className="abnormal-kpi" onClick={() => setStatusFilter("Open")}>
-        <span>Open</span>
-        <strong>{summary.open}</strong>
-        <small>Butuh action</small>
-      </button>
-      <button className="abnormal-kpi" onClick={() => setStatusFilter("On Progress")}>
-        <span>On Progress</span>
-        <strong>{summary.progress}</strong>
-        <small>Proses</small>
-      </button>
-      <button className="abnormal-kpi" onClick={() => setStatusFilter("Closed")}>
-        <span>Closed</span>
-        <strong>{summary.closed}</strong>
-        <small>Done</small>
-      </button>
-      <button className="abnormal-kpi">
-        <span>Rata-rata Hari Penyelesaian</span>
-        <strong>{summary.avg.toFixed(1)}d</strong>
-        <small>Keluar target</small>
-      </button>
-    </div>
+function AbnormalPage() {
+  const [rows, setRows] = useState<AbnormalRecord[]>(abnormalSeed);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [areaFilter, setAreaFilter] = useState("All");
+  const [sourceFilter, setSourceFilter] = useState("All");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<AbnormalRecord>({
+    id: "",
+    createdAt: formatDateTime(new Date()),
+    title: "",
+    area: "Workshop 1",
+    source: "Line",
+    category: "Material",
+    status: "Open",
+    owner: "",
+    description: "",
+  });
 
-    <div className="abnormal-charts-grid">
-      <article className="abnormal-panel">
-        <div className="repair-card-head"><div><h2>Abnormal per bulan</h2><p>Teknis vs Management</p></div></div>
-        <div className="abnormal-chart-box">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <CartesianGrid vertical={false} stroke="var(--line)"/>
-              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "var(--muted)" }}/>
-              <Tooltip/>
-              <Legend/>
-              <Bar dataKey="teknis" name="Teknis" fill="var(--chart-1)" radius={[4,4,0,0]} />
-              <Bar dataKey="management" name="Management" fill="var(--chart-5)" radius={[4,4,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
+  const filteredRows = useMemo(() => rows.filter((row) => {
+    const searchTerm = query.trim().toLowerCase();
+    const matchesQuery = !searchTerm || [row.id, row.title, row.area, row.owner, row.category].join(" ").toLowerCase().includes(searchTerm);
+    const matchesStatus = statusFilter === "All" || row.status === statusFilter;
+    const matchesArea = areaFilter === "All" || row.area === areaFilter;
+    const matchesSource = sourceFilter === "All" || row.source === sourceFilter;
+    return matchesQuery && matchesStatus && matchesArea && matchesSource;
+  }), [areaFilter, query, rows, sourceFilter, statusFilter]);
+
+  const openCreate = () => {
+    setEditingId(null);
+    setDraft({
+      id: "",
+      createdAt: formatDateTime(new Date()),
+      title: "",
+      area: "Workshop 1",
+      source: "Line",
+      category: "Material",
+      status: "Open",
+      owner: "",
+      description: "",
+    });
+    setIsFormOpen(true);
+  };
+
+  const openEdit = (row: AbnormalRecord) => {
+    setEditingId(row.id);
+    setDraft({ ...row });
+    setIsFormOpen(true);
+  };
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const cleanTitle = draft.title.trim();
+    if (!cleanTitle || !draft.owner.trim()) return;
+
+    const nextRecord: AbnormalRecord = {
+      ...draft,
+      title: cleanTitle,
+      owner: draft.owner.trim(),
+      description: draft.description.trim(),
+      createdAt: draft.createdAt || formatDateTime(new Date()),
+    };
+
+    if (editingId) {
+      setRows((current) => current.map((item) => (item.id === editingId ? nextRecord : item)));
+    } else {
+      const highestId = rows.reduce((max, item) => {
+        const match = item.id.match(/ABN-(\d+)/);
+        const number = match ? Number(match[1]) : 0;
+        return Math.max(max, number);
+      }, 0);
+      const newId = `ABN-${String(highestId + 1).padStart(3, "0")}`;
+      setRows((current) => [{ ...nextRecord, id: newId, createdAt: formatDateTime(new Date()) }, ...current]);
+    }
+
+    setIsFormOpen(false);
+    setEditingId(null);
+  };
+
+  const handleDelete = (id: string) => {
+    setRows((current) => current.filter((item) => item.id !== id));
+  };
+
+  const resetFilters = () => {
+    setQuery("");
+    setStatusFilter("All");
+    setAreaFilter("All");
+    setSourceFilter("All");
+  };
+
+  const summary = [
+    { label: "Total Abnormal", value: "124", helper: "all cases" },
+    { label: "Open", value: "26", helper: "needs action" },
+    { label: "In Progress", value: "18", helper: "in review" },
+    { label: "Closed", value: "80", helper: "resolved" },
+    { label: "Average SLA", value: "4.8d", helper: "days to close" },
+  ];
+
+  return (
+    <div className="abnormality-page">
+      <AbnormalPageHeader />
+
+      <section className="qc-kpi-grid abnormality-kpis">
+        {summary.map((item) => (
+          <article key={item.label} className="qc-kpi-card abnormality-kpi-card">
+            <span className="kpi-label">{item.label}</span>
+            <strong>{item.value}</strong>
+            <span className="kpi-unit">{item.helper}</span>
+          </article>
+        ))}
+      </section>
+
+      <article className="abnormality-panel">
+        <div className="abnormality-panel-head">
+          <div>
+            <h2>Abnormal log</h2>
+            <p>Filter by category, source, or status.</p>
+          </div>
+          <button type="button" className="qc-primary-button" onClick={openCreate}>
+            <Plus size={14} />
+            Add abnormal
+          </button>
         </div>
+
+        <div className="abnormality-filter-row">
+          <label className="abnormality-search">
+            <Search size={14} />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search abnormal..." />
+          </label>
+
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="All">All status</option>
+            <option value="Open">Open</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Closed">Closed</option>
+            <option value="Draft">Draft</option>
+          </select>
+
+          <select value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)}>
+            <option value="All">All areas</option>
+            <option value="Workshop 1">Workshop 1</option>
+            <option value="Workshop 2">Workshop 2</option>
+            <option value="Workshop 3">Workshop 3</option>
+            <option value="Workshop 5">Workshop 5</option>
+          </select>
+
+          <select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}>
+            <option value="All">All source</option>
+            <option value="Line">Line</option>
+            <option value="Before Occurring">Before Occurring</option>
+            <option value="Current Occurring">Current Occurring</option>
+            <option value="After Occurring">After Occurring</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <button type="button" className="qc-secondary-button abnormality-reset" onClick={resetFilters}>
+            <Filter size={14} />
+            Reset
+          </button>
+        </div>
+
+        {filteredRows.length === 0 ? (
+          <div className="abnormality-empty">No abnormals match the selected filters.</div>
+        ) : (
+          <div className="repair-table-scroll">
+            <table className="repair-data-table abnormality-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Created</th>
+                  <th>Abnormal</th>
+                  <th>Area</th>
+                  <th>Source</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th>PIC</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((item) => (
+                  <tr key={item.id}>
+                    <td><strong>{item.id}</strong></td>
+                    <td>{item.createdAt}</td>
+                    <td>
+                      <div className="abnormality-title-wrap">
+                        <strong>{item.title}</strong>
+                        <small>{item.description}</small>
+                      </div>
+                    </td>
+                    <td>{item.area}</td>
+                    <td>{item.source}</td>
+                    <td>{item.category}</td>
+                    <td>
+                      <span className={`status-chip ${abnormalStatusClass[item.status]}`}>{item.status}</span>
+                    </td>
+                    <td>{item.owner}</td>
+                    <td className="abnormality-actions">
+                      <button type="button" className="icon-button" aria-label="Edit abnormal" onClick={() => openEdit(item)}>
+                        <PencilLine size={14} />
+                      </button>
+                      <button type="button" className="icon-button danger" aria-label="Delete abnormal" onClick={() => handleDelete(item.id)}>
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </article>
 
-      <article className="abnormal-panel">
-        <div className="repair-card-head"><div><h2>Exception source</h2><p>Before / Current / After / Other</p></div></div>
-        <div className="abnormal-donut-box">
-          <div className="abnormal-donut" style={{ background: "conic-gradient(var(--chart-1) 0 30%, var(--chart-2) 30% 52%, var(--chart-3) 52% 81%, var(--chart-5) 81% 100%)" }}>
-            <div><strong>85</strong><small>cases</small></div>
-          </div>
-          <div className="abnormal-legend-list">
-            {donut.map((item) => (
-              <div key={item.label}><span><i style={{ background: item.color }} />{item.label}</span><strong>{item.value}</strong></div>
-            ))}
-          </div>
-        </div>
-      </article>
-
-      <article className="abnormal-panel">
-        <div className="repair-card-head"><div><h2>Frequency</h2><p>Distribusi kejadian</p></div></div>
-        <div className="abnormal-frequency-box">
-          {[
-            { label: "Long processing cycle", value: 34 },
-            { label: "Frequent occurrence", value: 22 },
-            { label: "Others", value: 14 },
-          ].map((item) => (
-            <div key={item.label} className="frequency-row">
-              <span>{item.label}</span>
-              <div className="frequency-track"><i style={{ width: `${item.value}%` }} /></div>
-              <strong>{item.value}%</strong>
+      {isFormOpen && (
+        <div className="repair-modal-backdrop" onMouseDown={() => setIsFormOpen(false)}>
+          <form className="repair-dialog" onMouseDown={(event) => event.stopPropagation()} onSubmit={handleSubmit}>
+            <div className="repair-dialog-head">
+              <div>
+                <h2>{editingId ? "Edit abnormal" : "Add abnormal"}</h2>
+                <p>{editingId ? "Update the selected abnormal record." : "Create a new abnormal record and add it to the log."}</p>
+              </div>
+              <button type="button" aria-label="Close" onClick={() => setIsFormOpen(false)}>
+                <X size={16} />
+              </button>
             </div>
-          ))}
+
+            <div className="repair-form">
+              <label>
+                Abnormal title
+                <input
+                  value={draft.title}
+                  onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
+                  placeholder="Title"
+                  required
+                />
+              </label>
+
+              <div className="form-grid">
+                <label>
+                  Area
+                  <select value={draft.area} onChange={(event) => setDraft((current) => ({ ...current, area: event.target.value }))}>
+                    <option>Workshop 1</option>
+                    <option>Workshop 2</option>
+                    <option>Workshop 3</option>
+                    <option>Workshop 5</option>
+                  </select>
+                </label>
+
+                <label>
+                  Source
+                  <select value={draft.source} onChange={(event) => setDraft((current) => ({ ...current, source: event.target.value }))}>
+                    <option>Line</option>
+                    <option>Before Occurring</option>
+                    <option>Current Occurring</option>
+                    <option>After Occurring</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+
+                <label>
+                  Category
+                  <select value={draft.category} onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))}>
+                    <option>Material</option>
+                    <option>Machine</option>
+                    <option>Method</option>
+                    <option>Supplier</option>
+                    <option>Human</option>
+                  </select>
+                </label>
+
+                <label>
+                  Status
+                  <select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value as AbnormalStatus }))}>
+                    <option>Open</option>
+                    <option>In Progress</option>
+                    <option>Closed</option>
+                    <option>Draft</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="form-grid">
+                <label>
+                  PIC
+                  <input
+                    value={draft.owner}
+                    onChange={(event) => setDraft((current) => ({ ...current, owner: event.target.value }))}
+                    placeholder="PIC name"
+                    required
+                  />
+                </label>
+
+                <label>
+                  Date & time
+                  <input
+                    type="datetime-local"
+                    value={draft.createdAt.replace(" ", "T").slice(0, 16)}
+                    onChange={(event) => setDraft((current) => ({ ...current, createdAt: event.target.value.replace("T", " ") }))}
+                  />
+                </label>
+              </div>
+
+              <label>
+                Description
+                <textarea
+                  rows={4}
+                  value={draft.description}
+                  onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
+                  placeholder="Detailed description"
+                />
+              </label>
+            </div>
+
+            <div className="repair-dialog-actions">
+              <button type="button" className="repair-outline" onClick={() => setIsFormOpen(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="repair-primary">
+                Save
+              </button>
+            </div>
+          </form>
         </div>
-      </article>
+      )}
     </div>
-
-    <article className="abnormal-panel table-panel">
-      <div className="repair-card-head abnormal-table-head"><div><h2>Daftar Abnormal</h2><p>Pencarian, filter, status</p></div></div>
-      <div className="abnormal-filter-row">
-        <label className="abnormal-search"><Glyph name="search"/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari abnormal..." /></label>
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-          <option value="All">Semua status</option>
-          <option value="Draft">Draft</option>
-          <option value="Open">Open</option>
-          <option value="On Progress">On Progress</option>
-          <option value="Closed">Closed</option>
-        </select>
-        <select value={trackFilter} onChange={(event) => setTrackFilter(event.target.value)}>
-          <option value="All">Semua track</option>
-          <option value="Teknis">Teknis</option>
-          <option value="Management">Management</option>
-          <option value="Keduanya">Keduanya</option>
-        </select>
-      </div>
-
-      <div className="repair-table-scroll">
-        <table className="repair-data-table abnormal-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Tanggal</th>
-              <th>Abnormal Name</th>
-              <th>Workshop Line</th>
-              <th>Proposer</th>
-              <th>Exception source</th>
-              <th>Frequency</th>
-              <th>Track</th>
-              <th>Status</th>
-              <th>Attachment</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((item) => (
-              <tr key={item.id} onClick={() => { setSelectedId(item.id); setDetailOpen(true); }}>
-                <td><strong>{item.id}</strong></td>
-                <td>{item.date}</td>
-                <td><strong>{item.name}</strong></td>
-                <td>{item.workshop}</td>
-                <td>{item.proposer}</td>
-                <td>{item.source}</td>
-                <td>{item.frequency}</td>
-                <td><span className="abnormal-track-badge">{item.track}</span></td>
-                <td><span className={`repair-status ${item.status === "Closed" ? "good" : item.status === "Open" ? "bad" : ""}`}>{item.status}</span></td>
-                <td>{item.attachment} <Glyph name="alert"/></td>
-                <td><button className="mini-link" type="button" onClick={(event) => { event.stopPropagation(); setSelectedId(item.id); setDetailOpen(true); }}>Lihat</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="abnormal-pagination">
-        <button type="button">Prev</button>
-        <span>1 / 2</span>
-        <button type="button">Next</button>
-      </div>
-    </article>
-  </div>;
+  );
 }
 
 function AbnormalDetail({ abnormal, onBack }: { abnormal: { id: string; date: string; name: string; workshop: string; proposer: string; source: string; frequency: string; track: string; status: string; attachment: number }; onBack: () => void }) {
@@ -531,9 +766,9 @@ function AbnormalWizard({ onQuit }: { onQuit: () => void }) {
 
   const setRoot = (type: "technical" | "management", id: number) => {
     if (type === "technical") {
-      setTechnicalWhys((current) => current.map((item) => ({ ...item, root: item.id === id }))); 
+      setTechnicalWhys((current) => current.map((item) => ({ ...item, root: item.id === id })));
     } else {
-      setManagementWhys((current) => current.map((item) => ({ ...item, root: item.id === id }))); 
+      setManagementWhys((current) => current.map((item) => ({ ...item, root: item.id === id })));
     }
     setSaved(false);
   };

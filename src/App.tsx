@@ -11,7 +11,13 @@ import {
 } from "recharts";
 import ProductionDashboard from "./ProductionDashboard";
 import RepairDashboard from "./RepairDashboard";
+import OqcDashboard, { type Page } from "./OqcDashboard";
+import PackingDashboard from "./PackingDashboard";
+import ServiceDashboard from "./ServiceDashboard";
 import SqcdipDashboard from "./SqcdipDashboard";
+import AssemblyDashboard, { type AssemblyPage } from "./AssemblyDashboard";
+import MaterialDashboard from "./MaterialDashboard";
+import type { ServicePageKey } from "./serviceData";
 
 const ollieImage = new URL("./assets/ollie.png", import.meta.url).href;
 const oppoLogo = new URL("./assets/oppo-logo.png", import.meta.url).href;
@@ -59,12 +65,13 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 }
 
 const platformMenu: { label: string; icon: IconName; submenu?: string[] }[] = [
-  { label: "Dashboard", icon: "grid" },
   { label: "SQCDIP", icon: "chart", submenu: ["Overview", "Abnormal Tracker"] },
+  { label: "Dashboard", icon: "grid" },
   { label: "Assembly", icon: "assembly" },
   { label: "Packing", icon: "package" },
-  { label: "QC", icon: "shield" },
-  { label: "Service", icon: "wrench" },
+  { label: "Material", icon: "warehouse", submenu: ["Clearance Discontinue", "New Model Progress", "WO Close"] },
+  { label: "QC", icon: "shield", submenu: ["FQC", "OQC", "Solusi Improvement"] },
+  { label: "Service", icon: "wrench", submenu: ["Mainboard Service Rate", "Battery Service Rate", "Service External", "Qualitas"] },
   { label: "Repair", icon: "wrench", submenu: ["Preassembly", "Rework", "Warranty", "Abnormal"] },
 ];
 
@@ -107,7 +114,7 @@ const commandGroups = [
 ];
 
 const materials = [
-  { name: "Battery Cell B117", id: "MAT-250614-091", category: "Battery", doh: "2.1 Days", status: "Active", owner: "AR", color: "blue" },
+  { name: "Battery Cell B117", id: "MAT-250614-091", category: "Battery", doh: "2.1 Days", status: "Active", owner: "AR", color: "primary" },
   { name: "PCB Mainboard P204", id: "MAT-250613-047", category: "Electronics", doh: "1.8 Days", status: "Low stock", owner: "DK", color: "violet" },
   { name: "Housing Frame H083", id: "MAT-250612-018", category: "External", doh: "3.4 Days", status: "Active", owner: "NS", color: "rose" },
   { name: "Camera Module C021", id: "MAT-250611-036", category: "Component", doh: "2.7 Days", status: "Active", owner: "RP", color: "cyan" },
@@ -155,15 +162,22 @@ export default function App() {
   const [activeBar, setActiveBar] = useState<number | null>(null);
   const [chartYear, setChartYear] = useState("2025");
   const [yearOpen, setYearOpen] = useState(false);
+  const [materialPage, setMaterialPage] = useState<"material-overview" | "material-clearance" | "material-new-model" | "material-woclose">("material-overview");
 
   const filteredCommandGroups = useMemo(() => commandGroups.map((group) => ({
     ...group,
     items: group.items.filter((item) => item.label.toLowerCase().includes(commandQuery.toLowerCase())),
   })).filter((group) => group.items.length), [commandQuery]);
   const filteredCommands = filteredCommandGroups.flatMap((group) => group.items);
-  const isRepairPage = ["Preassembly", "Rework", "Warranty", "Abnormal"].includes(active);
+  const isRepairPage = ["Preassembly", "Rework", "Warranty", "Abnormal", "Abnormality"].includes(active);
   const isProductionPage = active === "Dashboard";
   const isSqcdipPage = ["Overview", "Abnormal Tracker"].includes(active);
+  const isServicePage = ["service-overview", "service-mainboard", "service-battery", "service-external", "service-qualitas"].includes(active);
+  const isQcPage = ["qc-achievement", "fqc", "oqc", "solusi"].includes(active);
+  const isPackingPage = active === "Packing";
+  const isMaterialPage = ["material-overview", "material-clearance", "material-new-model", "material-woclose"].includes(active);
+  const isAssemblyPage = ["assembly-overview", "assembly-oqc", "assembly-violation", "assembly-upph", "assembly-ngp", "assembly-woclose", "assembly-wip", "assembly-rework"].includes(active);
+  const isAbnormalityPage = active === "Abnormality";
   const activeBrandLogo = dark ? oppoLogoDark : oppoLogo;
 
   useEffect(() => {
@@ -208,6 +222,112 @@ export default function App() {
   useEffect(() => setCommandIndex(0), [commandQuery]);
 
   const selectMenu = (label: string) => {
+    if (label === "SQCDIP") {
+      setActive("Overview");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "Repair") {
+      setActive("Preassembly");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "Abnormality") {
+      setActive("Abnormality");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "QC") {
+      setActive("qc-achievement");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "Assembly") {
+      setActive("assembly-overview");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "FQC") {
+      setActive("fqc");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "OQC") {
+      setActive("oqc");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "Solusi Improvement") {
+      setActive("solusi");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "Material") {
+      setActive("material-overview");
+      setMaterialPage("material-overview");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "Clearance Discontinue") {
+      setActive("material-clearance");
+      setMaterialPage("material-clearance");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "New Model Progress") {
+      setActive("material-new-model");
+      setMaterialPage("material-new-model");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "WO Close") {
+      setActive("material-woclose");
+      setMaterialPage("material-woclose");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "Service") {
+      setActive("service-overview");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "Mainboard Service Rate") {
+      setActive("service-mainboard");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "Battery Service Rate") {
+      setActive("service-battery");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "Service External") {
+      setActive("service-external");
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (label === "Qualitas") {
+      setActive("service-qualitas");
+      setMobileSidebar(false);
+      return;
+    }
+
     const normalized = label === "SQCDIP Overview" ? "Overview" : label;
     const exactMatch = menu.find((item) => item.label === normalized);
     const submenuMatch = menu.some((item) => item.submenu?.includes(normalized));
@@ -229,30 +349,58 @@ export default function App() {
           <nav>
             <div className="nav-group">
               <p>PLATFORM</p>
-              {platformMenu.map((item) => (
-                <div className="nav-entry" key={item.label}>
-                  <button data-tooltip={item.label} className={active === item.label ? "active" : ""} onClick={() => {
-                    selectMenu(item.label);
-                    if (item.submenu) {
-                      if (item.label === "Repair") setRepairOpen((value) => !value);
-                      else setWarehouseOpen((value) => !value);
-                    }
-                  }}>
-                    <Icon name={item.icon} /><span className="sidebar-copy">{item.label}</span>
-                    {item.submenu && <Icon name="chevron" size={13} />}
-                  </button>
-                  {item.submenu && item.label !== "Repair" && warehouseOpen && sidebarExpanded && (
-                    <div className="submenu">
-                      {item.submenu.map((sub) => <button key={sub} className={sub === active ? "current" : ""} onClick={() => selectMenu(sub)}>{sub}</button>)}
-                    </div>
-                  )}
-                  {item.submenu && item.label === "Repair" && repairOpen && sidebarExpanded && (
-                    <div className="submenu repair-submenu">
-                      {item.submenu.map((sub) => <button key={sub} className={active === sub ? "current" : ""} onClick={() => selectMenu(sub)}>{sub}</button>)}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {platformMenu.map((item) => {
+                const isActiveParent =
+                  item.label === "QC" && ["qc-achievement", "fqc", "oqc"].includes(active) ||
+                  item.label === "Solusi Improvement" && active === "solusi" ||
+                  item.label === "Assembly" && isAssemblyPage ||
+                  item.label === "Material" && isMaterialPage ||
+                  active === item.label;
+
+                const isServiceActiveParent = item.label === "Service" && active.startsWith("service-");
+                const isCurrentMenuParent = isActiveParent || isServiceActiveParent;
+
+                return (
+                  <div className="nav-entry" key={item.label}>
+                    <button data-tooltip={item.label} className={isCurrentMenuParent ? "active" : ""} onClick={() => {
+                      selectMenu(item.label);
+                      if (item.submenu) {
+                        if (item.label === "Repair") setRepairOpen((value) => !value);
+                        else setWarehouseOpen((value) => !value);
+                      }
+                    }}>
+                      <Icon name={item.icon} /><span className="sidebar-copy">{item.label}</span>
+                      {item.submenu && <Icon name="chevron" size={13} />}
+                    </button>
+                    {item.submenu && item.label !== "Repair" && warehouseOpen && sidebarExpanded && (
+                      <div className="submenu">
+                        {item.submenu.map((sub) => {
+                          const isCurrentSub =
+                            (sub === "FQC" && active === "fqc") ||
+                            (sub === "OQC" && active === "oqc") ||
+                            (sub === "Solusi Improvement" && active === "solusi") ||
+                            (sub === "Clearance Discontinue" && active === "material-clearance") ||
+                            (sub === "New Model Progress" && active === "material-new-model") ||
+                            (sub === "WO Close" && active === "material-woclose") ||
+                            (sub === "Mainboard Service Rate" && active === "service-mainboard") ||
+                            (sub === "Battery Service Rate" && active === "service-battery") ||
+                            (sub === "Service External" && active === "service-external") ||
+                            (sub === "Qualitas" && active === "service-qualitas");
+
+                          return (
+                            <button key={sub} className={isCurrentSub ? "current" : ""} onClick={() => selectMenu(sub)}>{sub}</button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {item.submenu && item.label === "Repair" && repairOpen && sidebarExpanded && (
+                      <div className="submenu repair-submenu">
+                        {item.submenu.map((sub) => <button key={sub} className={active === sub ? "current" : ""} onClick={() => selectMenu(sub)}>{sub}</button>)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <div className="nav-group management">
               <p>MANAGEMENT</p>
@@ -292,7 +440,13 @@ export default function App() {
                 else setSidebarExpanded(!sidebarExpanded);
               }}><Icon name="panel" size={18} /></button>
               <span className="divider" />
-              <div className="breadcrumb"><button>Home</button><Icon name="chevron" size={11} /><button>{isRepairPage ? "Repair" : active}</button><Icon name="chevron" size={11} /><strong>{isRepairPage ? active : "Overview"}</strong></div>
+              <div className="breadcrumb">
+                <button>Home</button>
+                <Icon name="chevron" size={11} />
+                <button>{isRepairPage ? "Repair" : isServicePage ? "Service" : isQcPage ? (active === "qc-achievement" ? "QC" : active === "fqc" ? "FQC" : active === "oqc" ? "OQC" : "Solusi Improvement") : isMaterialPage ? "Material" : isAssemblyPage ? "Assembly" : active}</button>
+                <Icon name="chevron" size={11} />
+                <strong>{isAbnormalityPage ? "Abnormality" : isRepairPage ? active : isServicePage ? (active === "service-overview" ? "Overview" : active === "service-mainboard" ? "Mainboard Service Rate" : active === "service-battery" ? "Battery Service Rate" : active === "service-external" ? "Service External" : "Qualitas") : isQcPage ? (active === "qc-achievement" ? "Pencapaian" : active === "fqc" ? "FQC" : active === "oqc" ? "OQC" : "Solusi Improvement") : isMaterialPage ? (active === "material-overview" ? "Overview" : active === "material-clearance" ? "Clearance Discontinue" : active === "material-new-model" ? "New Model Progress" : "WO Close") : isAssemblyPage ? (active === "assembly-overview" ? "Overview" : active === "assembly-oqc" ? "OQC" : active === "assembly-violation" ? "Violation" : active === "assembly-upph" ? "UPPH" : active === "assembly-ngp" ? "NG Produksi" : active === "assembly-woclose" ? "Wo Close" : active === "assembly-wip" ? "WIP" : "Rework") : "Overview"}</strong>
+              </div>
             </div>
             <div className="navbar-right">
               <button className="command-search" onClick={() => setCommandOpen(true)}><Icon name="search" size={16} /><span>Search...</span><kbd>{navigator.platform.includes("Mac") ? "⌘K" : "Ctrl K"}</kbd></button>
@@ -315,7 +469,7 @@ export default function App() {
           </header>
 
           <section className={`content ${isRepairPage ? "repair-content" : ""}`}>
-            {isRepairPage ? <RepairDashboard page={active as "Preassembly" | "Rework" | "Warranty" | "Abnormal"} /> : isProductionPage ? <ProductionDashboard onNavigate={(page) => selectMenu(page)} /> : isSqcdipPage ? <SqcdipDashboard page={active === "Abnormal Tracker" ? "Abnormal Tracker" : "Overview"} /> : <>
+            {isRepairPage ? <RepairDashboard page={isAbnormalityPage ? "Abnormal" : (active as "Preassembly" | "Rework" | "Warranty" | "Abnormal")} /> : isProductionPage ? <ProductionDashboard onNavigate={(page) => selectMenu(page)} /> : isPackingPage ? <PackingDashboard /> : isMaterialPage ? <MaterialDashboard page={materialPage} onNavigate={(nextPage) => { setMaterialPage(nextPage as typeof materialPage); setActive(nextPage); }} /> : isSqcdipPage ? <SqcdipDashboard page={active === "Abnormal Tracker" ? "Abnormal Tracker" : "Overview"} /> : isServicePage ? <ServiceDashboard pageKey={active as ServicePageKey} /> : isQcPage ? <OqcDashboard page={active as Page} onPageChange={(nextPage) => setActive(nextPage)} /> : isAssemblyPage ? <AssemblyDashboard page={active as AssemblyPage} /> : <>
             <div className="page-heading">
               <div><p>WAREHOUSE ANALYTICS</p><h1>Material overview</h1><span>Track inventory health and clearance performance.</span></div>
               <div className="range-wrap">
@@ -373,7 +527,7 @@ export default function App() {
                   <div className="donut"><span><strong>94%</strong><small>Optimized</small></span></div>
                   <div className="summary-list">
                     <div><span><i className="green" />Regular material pull</span><strong>12</strong></div>
-                    <div><span><i className="blue" />Optimized inventory</span><strong>8</strong></div>
+                    <div><span><i className="primary" />Optimized inventory</span><strong>8</strong></div>
                     <div><span><i className="orange" />Urgent restocking</span><strong>2</strong></div>
                   </div>
                 </div>
