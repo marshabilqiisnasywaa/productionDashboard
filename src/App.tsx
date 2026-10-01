@@ -9,7 +9,9 @@ import {
   Tooltip,
   XAxis,
 } from "recharts";
+import ProductionDashboard from "./ProductionDashboard";
 import RepairDashboard from "./RepairDashboard";
+import SqcdipDashboard from "./SqcdipDashboard";
 
 const ollieImage = new URL("./assets/ollie.png", import.meta.url).href;
 const oppoLogo = new URL("./assets/oppo-logo.png", import.meta.url).href;
@@ -159,6 +161,8 @@ export default function App() {
   })).filter((group) => group.items.length), [commandQuery]);
   const filteredCommands = filteredCommandGroups.flatMap((group) => group.items);
   const isRepairPage = ["Preassembly", "Rework", "Warranty", "Abnormal"].includes(active);
+  const isProductionPage = active === "Dashboard";
+  const isSqcdipPage = active === "SQCDIP Overview" || active === "Abnormal Tracker";
   const activeBrandLogo = dark ? oppoLogoDark : oppoLogo;
 
   useEffect(() => {
@@ -308,7 +312,7 @@ export default function App() {
           </header>
 
           <section className={`content ${isRepairPage ? "repair-content" : ""}`}>
-            {isRepairPage ? <RepairDashboard page={active as "Preassembly" | "Rework" | "Warranty" | "Abnormal"} /> : <>
+            {isRepairPage ? <RepairDashboard page={active as "Preassembly" | "Rework" | "Warranty" | "Abnormal"} /> : isProductionPage ? <ProductionDashboard onNavigate={(page) => selectMenu(page)} /> : isSqcdipPage ? <SqcdipDashboard page={active === "Abnormal Tracker" ? "Abnormal Tracker" : "Overview"} /> : <>
             <div className="page-heading">
               <div><p>WAREHOUSE ANALYTICS</p><h1>Material overview</h1><span>Track inventory health and clearance performance.</span></div>
               <div className="range-wrap">
