@@ -219,72 +219,86 @@ function Warranty() {
   return <><Header page="Warranty" onInput={()=>setDialog(true)}/><div className="repair-kpis two"><button className="repair-kpi"><div className="repair-kpi-top"><span>Input Unit Market</span><span className="repair-status good">Active</span></div><strong>52 <small>units</small></strong><p>Hari ini</p><Sparkline success/></button><button className="repair-kpi"><div className="repair-kpi-top"><span>Phone Off</span><span className="repair-status bad">7 units</span></div><strong>13.5%</strong><p>dari input market</p><Sparkline success={false}/></button></div><div className="repair-charts"><article className="repair-panel"><div className="repair-card-head"><div><h2>Input Unit Market</h2><p>Jumlah unit masuk harian</p></div><button className="repair-primary" onClick={()=>setDialog(true)}><Glyph name="plus"/>Input</button></div><div className="warranty-chart"><ResponsiveContainer><BarChart data={daily}><CartesianGrid vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false}/><Tooltip/><Bar dataKey="input" fill="var(--chart-1)" radius={6}/></BarChart></ResponsiveContainer></div></article><article className="repair-panel"><div className="repair-card-head"><div><h2>Phone Off</h2><p>Temuan phone off harian</p></div><button className="repair-primary" onClick={()=>setDialog(true)}><Glyph name="plus"/>Input</button></div><div className="warranty-chart"><ResponsiveContainer><LineChart data={daily}><CartesianGrid vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false}/><Tooltip/><Line dataKey="off" stroke="var(--chart-5)" strokeWidth={2}/></LineChart></ResponsiveContainer></div></article><article className="repair-panel wide"><div className="repair-card-head"><div><h2>Warranty recap</h2><p>Rekap unit berdasarkan tanggal dan model</p></div></div><div className="repair-table-scroll"><table className="repair-data-table"><thead><tr><th>Tanggal</th><th>Model</th><th>Input Unit Market</th><th>Phone Off</th><th>Keterangan</th></tr></thead><tbody>{daily.map((row)=><tr key={row.day}><td>{row.day}</td><td>OPPO A5 Pro</td><td>{row.input}</td><td className={row.off>5?"fail-cell":"pass-cell"}>{row.off}</td><td>Warranty inspection</td></tr>)}</tbody></table></div></article></div>{dialog&&<InputDialog onClose={()=>setDialog(false)} onSave={()=>setDialog(false)}/>}</>;
 }
 
-type AbnormalStatus = "Open" | "In Progress" | "Closed" | "Draft";
+type AbnormalStatus = "Open" | "In Progress" | "Closed-Loop" | "Draft";
 
 type AbnormalRecord = {
   id: string;
-  createdAt: string;
-  title: string;
+  date: string;
   area: string;
-  source: string;
-  category: string;
+  sqcdip: string;
+  factor: string;
+  problem: string;
+  improvement: string;
+  plan: string;
+  pic: string;
   status: AbnormalStatus;
-  owner: string;
-  description: string;
 };
 
 const abnormalSeed: AbnormalRecord[] = [
   {
-    id: "ABN-004",
-    createdAt: "2026-10-04 09:15",
-    title: "Bracket material shortage in line TAC20501",
-    area: "Workshop 5",
-    source: "After Occurring",
-    category: "Material",
-    status: "Closed",
-    owner: "Galuh",
-    description: "Shortage of bracket code 612210001971 caused delayed plan and line waiting time.",
-  },
-  {
-    id: "ABN-003",
-    createdAt: "2026-10-01 11:42",
-    title: "LCD component delivery delay",
-    area: "Workshop 3",
-    source: "Current Occurring",
-    category: "Supplier",
-    status: "Open",
-    owner: "Ayu",
-    description: "Component arrival missed the planned schedule and affected assembly throughput.",
+    id: "ABN-001",
+    date: "2026-10-01 09:30",
+    area: "Pre Assembly",
+    sqcdip: "Quality",
+    factor: "Machine",
+    problem: "LCD bonding machine temperature fluctuation caused slight adhesive peeling.",
+    improvement: "Adjusted heater cartridge and recalibrated PID controller.",
+    plan: "Daily pre-check thermal sensor calibration before shift.",
+    pic: "Ahmad Supriyadi",
+    status: "Closed-Loop",
   },
   {
     id: "ABN-002",
-    createdAt: "2026-09-26 14:20",
-    title: "Assembly line lag due to tool off-spec",
-    area: "Workshop 2",
-    source: "Before Occurring",
-    category: "Machine",
+    date: "2026-10-01 10:15",
+    area: "Service",
+    sqcdip: "Quality",
+    factor: "Man",
+    problem: "Mainboard service rate dropped due to operator misjudge analysis on IC repair.",
+    improvement: "Immediate re-training on BGA rework diagnostic manual.",
+    plan: "Conduct weekly technical skill evaluation for all line technicians.",
+    pic: "Siti Rahma",
     status: "In Progress",
-    owner: "Bayu",
-    description: "Offset tools created unstable output before the corrective maintenance action.",
   },
   {
-    id: "ABN-001",
-    createdAt: "2026-09-18 08:55",
-    title: "Top cover defect caused by handling",
-    area: "Workshop 1",
-    source: "Other",
-    category: "Method",
-    status: "Draft",
-    owner: "Candra",
-    description: "Handling damage increased rework volume and created cosmetic defects on finished goods.",
+    id: "ABN-003",
+    date: "2026-10-01 10:45",
+    area: "Warranty",
+    sqcdip: "Cost",
+    factor: "Material",
+    problem: "Phone off issue reported in market units exceeding standard PPM threshold.",
+    improvement: "Quarantined batch #BT-992 from battery supplier.",
+    plan: "Supplier audit and incoming battery voltage stress test implementation.",
+    pic: "Hendra Wijaya",
+    status: "Open",
+  },
+  {
+    id: "ABN-004",
+    date: "2026-10-01 11:00",
+    area: "Instalasi",
+    sqcdip: "Delivery",
+    factor: "Method",
+    problem: "Delivery delay caused by poor field installation sequencing and documentation gaps.",
+    improvement: "Re-sequenced install steps and shared updated checklist with field team.",
+    plan: "Daily handoff review before each installation batch.",
+    pic: "Dewi Lestari",
+    status: "Closed-Loop",
   },
 ];
 
 const abnormalStatusClass: Record<AbnormalStatus, string> = {
   Open: "status-open",
   "In Progress": "status-progress",
-  Closed: "status-closed",
+  "Closed-Loop": "status-closed-loop",
   Draft: "status-draft",
+};
+
+const abnormalSqcdipClass: Record<string, string> = {
+  Safety: "sqcdip-safety",
+  Quality: "sqcdip-quality",
+  Cost: "sqcdip-cost",
+  Delivery: "sqcdip-delivery",
+  Inventory: "sqcdip-inventory",
+  Productivity: "sqcdip-productivity",
 };
 
 function formatDateTime(date: Date) {
@@ -323,43 +337,45 @@ function AbnormalPage() {
   const [rows, setRows] = useState<AbnormalRecord[]>(abnormalSeed);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [areaFilter, setAreaFilter] = useState("All");
-  const [sourceFilter, setSourceFilter] = useState("All");
+  const [sqcdipFilter, setSqcdipFilter] = useState("All");
+  const [factorFilter, setFactorFilter] = useState("All");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<AbnormalRecord>({
     id: "",
-    createdAt: formatDateTime(new Date()),
-    title: "",
-    area: "Workshop 1",
-    source: "Line",
-    category: "Material",
+    date: formatDateTime(new Date()),
+    area: "Pre Assembly",
+    sqcdip: "Quality",
+    factor: "Machine",
+    problem: "",
+    improvement: "",
+    plan: "",
+    pic: "",
     status: "Open",
-    owner: "",
-    description: "",
   });
 
   const filteredRows = useMemo(() => rows.filter((row) => {
     const searchTerm = query.trim().toLowerCase();
-    const matchesQuery = !searchTerm || [row.id, row.title, row.area, row.owner, row.category].join(" ").toLowerCase().includes(searchTerm);
+    const matchesQuery = !searchTerm || [row.id, row.problem, row.area, row.pic, row.sqcdip, row.factor].join(" ").toLowerCase().includes(searchTerm);
     const matchesStatus = statusFilter === "All" || row.status === statusFilter;
-    const matchesArea = areaFilter === "All" || row.area === areaFilter;
-    const matchesSource = sourceFilter === "All" || row.source === sourceFilter;
-    return matchesQuery && matchesStatus && matchesArea && matchesSource;
-  }), [areaFilter, query, rows, sourceFilter, statusFilter]);
+    const matchesSqcdip = sqcdipFilter === "All" || row.sqcdip === sqcdipFilter;
+    const matchesFactor = factorFilter === "All" || row.factor === factorFilter;
+    return matchesQuery && matchesStatus && matchesSqcdip && matchesFactor;
+  }), [factorFilter, query, rows, sqcdipFilter, statusFilter]);
 
   const openCreate = () => {
     setEditingId(null);
     setDraft({
       id: "",
-      createdAt: formatDateTime(new Date()),
-      title: "",
-      area: "Workshop 1",
-      source: "Line",
-      category: "Material",
+      date: formatDateTime(new Date()),
+      area: "Pre Assembly",
+      sqcdip: "Quality",
+      factor: "Machine",
+      problem: "",
+      improvement: "",
+      plan: "",
+      pic: "",
       status: "Open",
-      owner: "",
-      description: "",
     });
     setIsFormOpen(true);
   };
@@ -373,15 +389,16 @@ function AbnormalPage() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const cleanTitle = draft.title.trim();
-    if (!cleanTitle || !draft.owner.trim()) return;
+    const cleanProblem = draft.problem.trim();
+    if (!cleanProblem || !draft.pic.trim()) return;
 
     const nextRecord: AbnormalRecord = {
       ...draft,
-      title: cleanTitle,
-      owner: draft.owner.trim(),
-      description: draft.description.trim(),
-      createdAt: draft.createdAt || formatDateTime(new Date()),
+      problem: cleanProblem,
+      improvement: draft.improvement.trim(),
+      plan: draft.plan.trim(),
+      pic: draft.pic.trim(),
+      date: draft.date || formatDateTime(new Date()),
     };
 
     if (editingId) {
@@ -393,7 +410,7 @@ function AbnormalPage() {
         return Math.max(max, number);
       }, 0);
       const newId = `ABN-${String(highestId + 1).padStart(3, "0")}`;
-      setRows((current) => [{ ...nextRecord, id: newId, createdAt: formatDateTime(new Date()) }, ...current]);
+      setRows((current) => [{ ...nextRecord, id: newId, date: formatDateTime(new Date()) }, ...current]);
     }
 
     setIsFormOpen(false);
@@ -407,15 +424,15 @@ function AbnormalPage() {
   const resetFilters = () => {
     setQuery("");
     setStatusFilter("All");
-    setAreaFilter("All");
-    setSourceFilter("All");
+    setSqcdipFilter("All");
+    setFactorFilter("All");
   };
 
   const summary = [
     { label: "Total Abnormal", value: "124", helper: "all cases" },
     { label: "Open", value: "26", helper: "needs action" },
     { label: "In Progress", value: "18", helper: "in review" },
-    { label: "Closed", value: "80", helper: "resolved" },
+    { label: "Closed-Loop", value: "80", helper: "resolved" },
     { label: "Average SLA", value: "4.8d", helper: "days to close" },
   ];
 
@@ -437,7 +454,7 @@ function AbnormalPage() {
         <div className="abnormality-panel-head">
           <div>
             <h2>Abnormal log</h2>
-            <p>Filter by category, source, or status.</p>
+            <p>Filter by SQCDIP, 5M1E, or status.</p>
           </div>
           <button type="button" className="qc-primary-button" onClick={openCreate}>
             <Plus size={14} />
@@ -451,29 +468,32 @@ function AbnormalPage() {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search abnormal..." />
           </label>
 
+          <select value={sqcdipFilter} onChange={(event) => setSqcdipFilter(event.target.value)}>
+            <option value="All">All SQCDIP</option>
+            <option value="Safety">Safety</option>
+            <option value="Quality">Quality</option>
+            <option value="Cost">Cost</option>
+            <option value="Delivery">Delivery</option>
+            <option value="Inventory">Inventory</option>
+            <option value="Productivity">Productivity</option>
+          </select>
+
+          <select value={factorFilter} onChange={(event) => setFactorFilter(event.target.value)}>
+            <option value="All">All 5M1E</option>
+            <option value="Machine">Machine</option>
+            <option value="Man">Man</option>
+            <option value="Material">Material</option>
+            <option value="Method">Method</option>
+            <option value="Measurement">Measurement</option>
+            <option value="Environment">Environment</option>
+          </select>
+
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="All">All status</option>
             <option value="Open">Open</option>
             <option value="In Progress">In Progress</option>
-            <option value="Closed">Closed</option>
+            <option value="Closed-Loop">Closed-Loop</option>
             <option value="Draft">Draft</option>
-          </select>
-
-          <select value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)}>
-            <option value="All">All areas</option>
-            <option value="Workshop 1">Workshop 1</option>
-            <option value="Workshop 2">Workshop 2</option>
-            <option value="Workshop 3">Workshop 3</option>
-            <option value="Workshop 5">Workshop 5</option>
-          </select>
-
-          <select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}>
-            <option value="All">All source</option>
-            <option value="Line">Line</option>
-            <option value="Before Occurring">Before Occurring</option>
-            <option value="Current Occurring">Current Occurring</option>
-            <option value="After Occurring">After Occurring</option>
-            <option value="Other">Other</option>
           </select>
 
           <button type="button" className="qc-secondary-button abnormality-reset" onClick={resetFilters}>
@@ -490,34 +510,38 @@ function AbnormalPage() {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Created</th>
-                  <th>Abnormal</th>
+                  <th>Date</th>
                   <th>Area</th>
-                  <th>Source</th>
-                  <th>Category</th>
-                  <th>Status</th>
+                  <th>SQCDIP</th>
+                  <th>5M1E</th>
+                  <th>Problem</th>
                   <th>PIC</th>
-                  <th>Actions</th>
+                  <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRows.map((item) => (
                   <tr key={item.id}>
                     <td><strong>{item.id}</strong></td>
-                    <td>{item.createdAt}</td>
+                    <td>{item.date}</td>
+                    <td>{item.area}</td>
+                    <td>
+                      <span className={`abnormality-sq-badge ${abnormalSqcdipClass[item.sqcdip] ?? "sqcdip-quality"}`}>
+                        {item.sqcdip}
+                      </span>
+                    </td>
+                    <td>{item.factor}</td>
                     <td>
                       <div className="abnormality-title-wrap">
-                        <strong>{item.title}</strong>
-                        <small>{item.description}</small>
+                        <strong>{item.problem}</strong>
+                        <small>{item.improvement}</small>
                       </div>
                     </td>
-                    <td>{item.area}</td>
-                    <td>{item.source}</td>
-                    <td>{item.category}</td>
+                    <td>{item.pic}</td>
                     <td>
                       <span className={`status-chip ${abnormalStatusClass[item.status]}`}>{item.status}</span>
                     </td>
-                    <td>{item.owner}</td>
                     <td className="abnormality-actions">
                       <button type="button" className="icon-button" aria-label="Edit abnormal" onClick={() => openEdit(item)}>
                         <PencilLine size={14} />
@@ -548,90 +572,107 @@ function AbnormalPage() {
             </div>
 
             <div className="repair-form">
+              <div className="form-grid">
+                <label>
+                  Area
+                  <select value={draft.area} onChange={(event) => setDraft((current) => ({ ...current, area: event.target.value }))}>
+                    <option>Pre Assembly</option>
+                    <option>Rework</option>
+                    <option>Warranty</option>
+                    <option>Service</option>
+                    <option>QC</option>
+                    <option>Material</option>
+                    <option>Packing</option>
+                    <option>Instalasi</option>
+                  </select>
+                </label>
+
+                <label>
+                  SQCDIP
+                  <select value={draft.sqcdip} onChange={(event) => setDraft((current) => ({ ...current, sqcdip: event.target.value }))}>
+                    <option>Safety</option>
+                    <option>Quality</option>
+                    <option>Cost</option>
+                    <option>Delivery</option>
+                    <option>Inventory</option>
+                    <option>Productivity</option>
+                  </select>
+                </label>
+
+                <label>
+                  5M1E
+                  <select value={draft.factor} onChange={(event) => setDraft((current) => ({ ...current, factor: event.target.value }))}>
+                    <option>Machine</option>
+                    <option>Man</option>
+                    <option>Material</option>
+                    <option>Method</option>
+                    <option>Measurement</option>
+                    <option>Environment</option>
+                  </select>
+                </label>
+
+                <label>
+                  PIC
+                  <input
+                    value={draft.pic}
+                    onChange={(event) => setDraft((current) => ({ ...current, pic: event.target.value }))}
+                    placeholder="PIC name"
+                    required
+                  />
+                </label>
+              </div>
+
               <label>
-                Abnormal title
-                <input
-                  value={draft.title}
-                  onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
-                  placeholder="Title"
+                Problem
+                <textarea
+                  rows={3}
+                  value={draft.problem}
+                  onChange={(event) => setDraft((current) => ({ ...current, problem: event.target.value }))}
+                  placeholder="Detailed problem"
                   required
+                />
+              </label>
+
+              <label>
+                Improvement
+                <textarea
+                  rows={3}
+                  value={draft.improvement}
+                  onChange={(event) => setDraft((current) => ({ ...current, improvement: event.target.value }))}
+                  placeholder="Corrective action taken"
+                />
+              </label>
+
+              <label>
+                Action plan
+                <textarea
+                  rows={3}
+                  value={draft.plan}
+                  onChange={(event) => setDraft((current) => ({ ...current, plan: event.target.value }))}
+                  placeholder="Follow-up plan"
                 />
               </label>
 
               <div className="form-grid">
                 <label>
-                  Area
-                  <select value={draft.area} onChange={(event) => setDraft((current) => ({ ...current, area: event.target.value }))}>
-                    <option>Workshop 1</option>
-                    <option>Workshop 2</option>
-                    <option>Workshop 3</option>
-                    <option>Workshop 5</option>
-                  </select>
-                </label>
-
-                <label>
-                  Source
-                  <select value={draft.source} onChange={(event) => setDraft((current) => ({ ...current, source: event.target.value }))}>
-                    <option>Line</option>
-                    <option>Before Occurring</option>
-                    <option>Current Occurring</option>
-                    <option>After Occurring</option>
-                    <option>Other</option>
-                  </select>
-                </label>
-
-                <label>
-                  Category
-                  <select value={draft.category} onChange={(event) => setDraft((current) => ({ ...current, category: event.target.value }))}>
-                    <option>Material</option>
-                    <option>Machine</option>
-                    <option>Method</option>
-                    <option>Supplier</option>
-                    <option>Human</option>
-                  </select>
-                </label>
-
-                <label>
                   Status
                   <select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value as AbnormalStatus }))}>
                     <option>Open</option>
                     <option>In Progress</option>
-                    <option>Closed</option>
+                    <option>Closed-Loop</option>
                     <option>Draft</option>
                   </select>
-                </label>
-              </div>
-
-              <div className="form-grid">
-                <label>
-                  PIC
-                  <input
-                    value={draft.owner}
-                    onChange={(event) => setDraft((current) => ({ ...current, owner: event.target.value }))}
-                    placeholder="PIC name"
-                    required
-                  />
                 </label>
 
                 <label>
                   Date & time
                   <input
                     type="datetime-local"
-                    value={draft.createdAt.replace(" ", "T").slice(0, 16)}
-                    onChange={(event) => setDraft((current) => ({ ...current, createdAt: event.target.value.replace("T", " ") }))}
+                    value={draft.date.replace(" ", "T").slice(0, 16)}
+                    onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value.replace("T", " ") }))}
                   />
                 </label>
               </div>
-
-              <label>
-                Description
-                <textarea
-                  rows={4}
-                  value={draft.description}
-                  onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
-                  placeholder="Detailed description"
-                />
-              </label>
             </div>
 
             <div className="repair-dialog-actions">

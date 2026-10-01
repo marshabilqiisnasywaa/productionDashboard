@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
@@ -75,8 +77,64 @@ function Icon({ name }: { name: "calendar"|"download"|"trend"|"factory"|"arrow"|
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
 
-function Spark({ bad = true }: { bad?: boolean }) {
-  return <svg className="pd-spark" viewBox="0 0 100 30" preserveAspectRatio="none"><path d="M1 25 11 19 21 22 31 15 41 18 51 10 61 14 71 6 81 10 91 4 99 7" fill="none" stroke={bad?"var(--danger)":"var(--success)"} strokeWidth="2"/><path d="M1 30V25L11 19 21 22 31 15 41 18 51 10 61 14 71 6 81 10 91 4 99 7V30Z" fill={bad?"var(--danger-soft)":"var(--success-soft)"}/></svg>;
+type KpiTone = "good" | "bad" | "warning" | "neutral" | "featured";
+
+function StatusPill({ label, tone = "neutral" }: { label: string; tone?: KpiTone }) {
+  return <span className={`status-pill status-pill--${tone}`}>{label}</span>;
+}
+
+function Sparkline({ tone = "good", featured = false }: { tone?: KpiTone; featured?: boolean }) {
+  const values = [10, 18, 16, 20, 18, 22, 17, 24, 21, 26, 23, 28];
+  const stroke = featured ? "#ffffff" : tone === "bad" ? "var(--danger)" : tone === "warning" ? "var(--accent-amber)" : "var(--primary)";
+  const fill = featured ? "rgba(255,255,255,0.14)" : tone === "bad" ? "rgba(214,69,69,0.10)" : tone === "warning" ? "rgba(245,158,11,0.12)" : "rgba(21,103,74,0.12)";
+
+  return (
+    <ResponsiveContainer width="100%" height={48}>
+      <AreaChart data={values.map((value, index) => ({ index, value }))} margin={{ top: 4, right: 2, left: 2, bottom: 0 }}>
+        <defs>
+          <linearGradient id={`spark-fill-${featured ? "featured" : tone}`} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={stroke} stopOpacity={featured ? 0.42 : 0.32} />
+            <stop offset="100%" stopColor={stroke} stopOpacity={0.04} />
+          </linearGradient>
+        </defs>
+        <Area type="monotone" dataKey="value" stroke={stroke} strokeWidth={2} fill={`url(#spark-fill-${featured ? "featured" : tone})`} fillOpacity={1} dot={false} activeDot={false} />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+function KpiCard({ item, onClick }: { item: { name: string; value: string; unit?: string; target: string; delta: string; go: string; focus?: boolean }; onClick: () => void }) {
+  const isBad = item.delta.startsWith("-") || item.delta === "Needs action";
+  const isWarning = item.delta === "Needs action";
+  const tone: KpiTone = item.focus ? "good" : isWarning ? "warning" : isBad ? "bad" : "good";
+  const statusLabel = item.delta === "Needs action" ? "Needs action" : isBad ? "Off Target" : "On Target";
+  const helperText = item.name === "Abnormal Terbuka" ? "2 overdue · Needs action" : undefined;
+
+  return (
+    <button type="button" className={`pd-kpi-card ${item.focus ? "featured" : ""}`} onClick={onClick}>
+      <div className="pd-kpi-head">
+        <span className="pd-kpi-label">{item.name}</span>
+        <StatusPill label={statusLabel} tone={item.focus ? "featured" : isWarning ? "warning" : isBad ? "bad" : "good"} />
+      </div>
+
+      <div className="pd-kpi-main">
+        <span className="pd-kpi-value">{item.value}</span>
+        {item.unit ? <span className="pd-kpi-unit">{item.unit}</span> : null}
+      </div>
+
+      <div className="pd-kpi-foot">
+        <div className="pd-kpi-foot-row">
+          <span>Target: {item.target}</span>
+          <span className={`pd-kpi-delta pd-kpi-delta--${item.focus ? "featured" : isWarning ? "warning" : isBad ? "bad" : "good"}`}>{item.delta}</span>
+        </div>
+        {helperText ? <span className="pd-kpi-helper">{helperText}</span> : null}
+      </div>
+
+      <div className="pd-kpi-spark">
+        <Sparkline tone={tone} featured={Boolean(item.focus)} />
+      </div>
+    </button>
+  );
 }
 
 export default function ProductionDashboard({ onNavigate }: { onNavigate: Navigate }) {
@@ -93,7 +151,7 @@ export default function ProductionDashboard({ onNavigate }: { onNavigate: Naviga
     {name:"Abnormal Terbuka",value:"7",unit:"kasus",target:"2 overdue",delta:"Needs action",go:"Abnormal Tracker"},
   ];
   return <div className="production-dashboard"><header className="pd-header"><div><span>PRODUCTION ANALYTICS</span><h1>Production Overview</h1><p>Ringkasan performa semua area produksi</p></div><div><button><Icon name="calendar"/>30 Sep – 06 Oct 2025</button><select><option>Semua Shift</option><option>Shift 1</option><option>Shift 2</option></select><button><Icon name="download"/>Export</button></div></header>
-    <div className="pd-kpis">{kpiCards.map((item,index)=><button className={item.focus?"focus":""} onClick={()=>onNavigate(item.go)} key={item.name}><div><span>{item.name}</span><em>Off Target</em></div><strong>{item.value} <small>{item.unit}</small></strong><p>{index===4?item.target:`Target: ${item.target}`} <b>{item.delta}</b></p><Spark/></button>)}</div>
+    <div className="pd-kpis">{kpiCards.map((item)=><KpiCard item={item} onClick={()=>onNavigate(item.go)} key={item.name} />)}</div>
     <div className="pd-row-two"><article className="pd-panel output-chart"><div className="pd-panel-head"><div><h2>Output vs Target</h2><p>Actual production output per day</p></div><select value={period} onChange={(e)=>setPeriod(e.target.value)}><option>2025</option><option>2024</option></select></div><div className="pd-chart"><ResponsiveContainer><BarChart data={outputData} onMouseMove={(state)=>setHovered(typeof state?.activeTooltipIndex==="number"?state.activeTooltipIndex:null)} onMouseLeave={()=>setHovered(null)}><CartesianGrid vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false} tickMargin={10}/><Tooltip cursor={{fill:"var(--chart-cursor)"}}/><Legend/><Bar dataKey="actual" name="Actual" fill="var(--chart-1)" radius={6} maxBarSize={28}>{outputData.map((_,index)=><Cell key={index} opacity={hovered===null||hovered===index?1:.6}/>)}</Bar><Bar dataKey="target" name="Target" fill="var(--chart-2)" radius={6} maxBarSize={28}>{outputData.map((_,index)=><Cell key={index} opacity={hovered===null||hovered===index?1:.6}/>)}</Bar></BarChart></ResponsiveContainer></div><footer><strong>Trending up by 5.2% this month <Icon name="trend"/></strong><span>Showing production output for the last 7 days</span></footer></article>
       <article className="pd-panel kpi-donut"><div className="pd-panel-head"><div><h2>Status KPI Semua Area</h2><p>Ringkasan pencapaian target</p></div></div><div className="pd-donut"><span><strong>25</strong><small>KPI</small></span></div><div className="pd-donut-legend"><span><i className="good"/>On Target <b>18</b></span><span><i className="bad"/>Off Target <b>7</b></span></div></article></div>
     <section className="pd-section"><div className="pd-section-head"><div><h2>Ringkasan per Area</h2><p>Status KPI utama seluruh area produksi</p></div></div><div className="pd-area-grid">{areaCards.map((area)=><button className="pd-area-card" onClick={()=>onNavigate(area.target)} key={area.name}><div className="pd-area-head"><span><Icon name="factory"/></span><div><h3>{area.name}</h3><p>{area.score} on target</p></div><i className={area.status}/></div><div className="pd-area-kpis">{area.kpis.map(([name,value,status])=><div key={name}><span>{name}</span><b>{value}</b><i className={status}/></div>)}</div><footer>Lihat detail <Icon name="arrow"/></footer></button>)}<button className="pd-all-areas"><span>7</span><strong>Semua Area</strong><p>Lihat performa lengkap</p><Icon name="arrow"/></button></div></section>
