@@ -52,6 +52,10 @@ function StatusPill({ label, tone = "neutral" }: { label: string; tone?: "neutra
   return <span className={`status-pill ${tone}`}>{label}</span>;
 }
 
+function Sparkline({ success }: { success: boolean }) {
+  return <svg className="repair-spark" viewBox="0 0 112 35" preserveAspectRatio="none"><path d="M1 28 8 25 15 27 22 18 29 21 36 15 43 18 50 11 57 14 64 8 71 13 78 6 85 10 92 5 99 9 111 3" fill="none" stroke={success ? "var(--success)" : "var(--danger)"} strokeWidth="2"/><path d="M1 34V28L8 25 15 27 22 18 29 21 36 15 43 18 50 11 57 14 64 8 71 13 78 6 85 10 92 5 99 9 111 3V34Z" fill={success ? "var(--success-soft)" : "var(--danger-soft)"}/></svg>;
+}
+
 function PageHeader({ eyebrow, title, subtitle, actionLabel }: { eyebrow: string; title: string; subtitle?: string; actionLabel?: string }) {
   return (
     <header className="material-header glass-card">
@@ -80,11 +84,13 @@ function KpiCard({
   onClick?: () => void;
   selected?: boolean;
 }) {
+  const success = tone === "success" || tone === "primary" || tone === "neutral";
   return (
-    <button type="button" className={`material-kpi-card ${selected ? "selected" : ""} ${tone}`} onClick={onClick}>
-      <span className="material-card-label">{label}</span>
+    <button type="button" className={`repair-kpi material-kpi-card ${selected ? "selected" : ""} ${tone}`} onClick={onClick}>
+      <div className="repair-kpi-top"><span>{label}</span><span className={`repair-status ${success ? "good" : "bad"}`}>{success ? "On Target" : "Off Target"}</span></div>
       <strong>{value}</strong>
-      <small>Target {target}</small>
+      <p>Target: {target}</p>
+      <Sparkline success={success} />
     </button>
   );
 }

@@ -18,6 +18,8 @@ import SqcdipDashboard from "./SqcdipDashboard";
 import AssemblyDashboard, { type AssemblyPage } from "./AssemblyDashboard";
 import MaterialDashboard from "./MaterialDashboard";
 import type { ServicePageKey } from "./serviceData";
+import CostDashboard from "./cost/CostDashboard";
+import type { CostNav, CostPage } from "./cost/costData";
 
 const ollieImage = new URL("./assets/ollie.png", import.meta.url).href;
 const oppoLogo = new URL("./assets/oppo-logo.png", import.meta.url).href;
@@ -28,7 +30,7 @@ type IconName =
   | "warehouse" | "alert" | "search" | "bell" | "moon" | "sun"
   | "calendar" | "chevron" | "arrow" | "boxes" | "refresh" | "users"
   | "panel" | "globe" | "help" | "settings" | "chart" | "message"
-  | "profile" | "billing" | "trending";
+  | "profile" | "billing" | "trending" | "cost";
 
 const iconPaths: Record<IconName, React.ReactNode> = {
   factory: <><path d="M3 21h18M5 21V10l5 3V8l5 3V4h4v17" /><path d="M8 17h1m4 0h1m4 0h1" /></>,
@@ -58,6 +60,7 @@ const iconPaths: Record<IconName, React.ReactNode> = {
   profile: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,
   billing: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h3" /></>,
   trending: <><path d="m3 17 6-6 4 4 8-8" /><path d="M15 7h6v6" /></>,
+  cost: <><circle cx="12" cy="12" r="8" /><path d="M12 7v10m3-7.5c-.6-.7-1.5-1-3-1-1.7 0-3 .8-3 2s1.3 2 3 2 3 .8 3 2-1.3 2-3 2c-1.5 0-2.4-.3-3-1" /></>,
 };
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
@@ -73,6 +76,7 @@ const platformMenu: { label: string; icon: IconName; submenu?: string[] }[] = [
   { label: "QC", icon: "shield", submenu: ["FQC", "OQC", "Solusi Improvement"] },
   { label: "Service", icon: "wrench", submenu: ["Mainboard Service Rate", "Battery Service Rate", "Service External", "Qualitas"] },
   { label: "Repair", icon: "wrench", submenu: ["Preassembly", "Rework", "Warranty", "Abnormal"] },
+  { label: "Cost", icon: "cost", submenu: ["Monitoring", "Losses Cost", "Cost Transfer", "Cost Improvement"] },
 ];
 
 const managementMenu: { label: string; icon: IconName; submenu?: string[] }[] = [
@@ -163,6 +167,8 @@ export default function App() {
   const [chartYear, setChartYear] = useState("2025");
   const [yearOpen, setYearOpen] = useState(false);
   const [materialPage, setMaterialPage] = useState<"material-overview" | "material-clearance" | "material-new-model" | "material-woclose">("material-overview");
+  const [costPage, setCostPage] = useState<CostPage>("Monitoring");
+  const [costFocus, setCostFocus] = useState<CostNav | undefined>();
 
   const filteredCommandGroups = useMemo(() => commandGroups.map((group) => ({
     ...group,
@@ -177,6 +183,7 @@ export default function App() {
   const isPackingPage = active === "Packing";
   const isMaterialPage = ["material-overview", "material-clearance", "material-new-model", "material-woclose"].includes(active);
   const isAssemblyPage = ["assembly-overview", "assembly-oqc", "assembly-violation", "assembly-upph", "assembly-ngp", "assembly-woclose", "assembly-wip", "assembly-rework"].includes(active);
+  const isCostPage = active.startsWith("cost-");
   const isAbnormalityPage = active === "Abnormality";
   const activeBrandLogo = dark ? oppoLogoDark : oppoLogo;
 
@@ -304,6 +311,23 @@ export default function App() {
       return;
     }
 
+    if (label === "Cost") {
+      setActive("cost-monitoring");
+      setCostPage("Monitoring");
+      setCostFocus(undefined);
+      setMobileSidebar(false);
+      return;
+    }
+
+    if (["Monitoring", "Losses Cost", "Cost Transfer", "Cost Improvement"].includes(label)) {
+      const nextPage = label as CostPage;
+      setActive(`cost-${nextPage.toLowerCase().replaceAll(" ", "-")}`);
+      setCostPage(nextPage);
+      setCostFocus(undefined);
+      setMobileSidebar(false);
+      return;
+    }
+
     if (label === "Mainboard Service Rate") {
       setActive("service-mainboard");
       setMobileSidebar(false);
@@ -355,6 +379,7 @@ export default function App() {
                   item.label === "Solusi Improvement" && active === "solusi" ||
                   item.label === "Assembly" && isAssemblyPage ||
                   item.label === "Material" && isMaterialPage ||
+                  item.label === "Cost" && isCostPage ||
                   active === item.label;
 
                 const isServiceActiveParent = item.label === "Service" && active.startsWith("service-");
@@ -385,7 +410,12 @@ export default function App() {
                             (sub === "Mainboard Service Rate" && active === "service-mainboard") ||
                             (sub === "Battery Service Rate" && active === "service-battery") ||
                             (sub === "Service External" && active === "service-external") ||
-                            (sub === "Qualitas" && active === "service-qualitas");
+                            (sub === "Qualitas" && active === "service-qualitas") ||
+                            (sub === "Monitoring" && active === "cost-monitoring") ||
+                            (sub === "Losses Cost" && active === "cost-losses-cost") ||
+                            (sub === "Cost Transfer" && active === "cost-cost-transfer") ||
+                            (sub === "Cost Improvement" && active === "cost-cost-improvement");
+                            
 
                           return (
                             <button key={sub} className={isCurrentSub ? "current" : ""} onClick={() => selectMenu(sub)}>{sub}</button>
@@ -443,9 +473,9 @@ export default function App() {
               <div className="breadcrumb">
                 <button>Home</button>
                 <Icon name="chevron" size={11} />
-                <button>{isRepairPage ? "Repair" : isServicePage ? "Service" : isQcPage ? (active === "qc-achievement" ? "QC" : active === "fqc" ? "FQC" : active === "oqc" ? "OQC" : "Solusi Improvement") : isMaterialPage ? "Material" : isAssemblyPage ? "Assembly" : active}</button>
+                <button>{isRepairPage ? "Repair" : isCostPage ? "Cost" : isServicePage ? "Service" : isQcPage ? (active === "qc-achievement" ? "QC" : active === "fqc" ? "FQC" : active === "oqc" ? "OQC" : "Solusi Improvement") : isMaterialPage ? "Material" : isAssemblyPage ? "Assembly" : active}</button>
                 <Icon name="chevron" size={11} />
-                <strong>{isAbnormalityPage ? "Abnormality" : isRepairPage ? active : isServicePage ? (active === "service-overview" ? "Overview" : active === "service-mainboard" ? "Mainboard Service Rate" : active === "service-battery" ? "Battery Service Rate" : active === "service-external" ? "Service External" : "Qualitas") : isQcPage ? (active === "qc-achievement" ? "Pencapaian" : active === "fqc" ? "FQC" : active === "oqc" ? "OQC" : "Solusi Improvement") : isMaterialPage ? (active === "material-overview" ? "Overview" : active === "material-clearance" ? "Clearance Discontinue" : active === "material-new-model" ? "New Model Progress" : "WO Close") : isAssemblyPage ? (active === "assembly-overview" ? "Overview" : active === "assembly-oqc" ? "OQC" : active === "assembly-violation" ? "Violation" : active === "assembly-upph" ? "UPPH" : active === "assembly-ngp" ? "NG Produksi" : active === "assembly-woclose" ? "Wo Close" : active === "assembly-wip" ? "WIP" : "Rework") : "Overview"}</strong>
+                <strong>{isAbnormalityPage ? "Abnormality" : isRepairPage ? active : isCostPage ? costPage : isServicePage ? (active === "service-overview" ? "Overview" : active === "service-mainboard" ? "Mainboard Service Rate" : active === "service-battery" ? "Battery Service Rate" : active === "service-external" ? "Service External" : "Qualitas") : isQcPage ? (active === "qc-achievement" ? "Pencapaian" : active === "fqc" ? "FQC" : active === "oqc" ? "OQC" : "Solusi Improvement") : isMaterialPage ? (active === "material-overview" ? "Overview" : active === "material-clearance" ? "Clearance Discontinue" : active === "material-new-model" ? "New Model Progress" : "WO Close") : isAssemblyPage ? (active === "assembly-overview" ? "Overview" : active === "assembly-oqc" ? "OQC" : active === "assembly-violation" ? "Violation" : active === "assembly-upph" ? "UPPH" : active === "assembly-ngp" ? "NG Produksi" : active === "assembly-woclose" ? "Wo Close" : active === "assembly-wip" ? "WIP" : "Rework") : "Overview"}</strong>
               </div>
             </div>
             <div className="navbar-right">
@@ -469,7 +499,7 @@ export default function App() {
           </header>
 
           <section className={`content ${isRepairPage ? "repair-content" : ""}`}>
-            {isRepairPage ? <RepairDashboard page={isAbnormalityPage ? "Abnormal" : (active as "Preassembly" | "Rework" | "Warranty" | "Abnormal")} /> : isProductionPage ? <ProductionDashboard onNavigate={(page) => selectMenu(page)} /> : isPackingPage ? <PackingDashboard /> : isMaterialPage ? <MaterialDashboard page={materialPage} onNavigate={(nextPage) => { setMaterialPage(nextPage as typeof materialPage); setActive(nextPage); }} /> : isSqcdipPage ? <SqcdipDashboard page={active === "Abnormal Tracker" ? "Abnormal Tracker" : "Overview"} /> : isServicePage ? <ServiceDashboard pageKey={active as ServicePageKey} /> : isQcPage ? <OqcDashboard page={active as Page} onPageChange={(nextPage) => setActive(nextPage)} /> : isAssemblyPage ? <AssemblyDashboard page={active as AssemblyPage} /> : <>
+            {isRepairPage ? <RepairDashboard page={isAbnormalityPage ? "Abnormal" : (active as "Preassembly" | "Rework" | "Warranty" | "Abnormal")} /> : isProductionPage ? <ProductionDashboard onNavigate={(page) => selectMenu(page)} /> : isPackingPage ? <PackingDashboard /> : isMaterialPage ? <MaterialDashboard page={materialPage} onNavigate={(nextPage) => { setMaterialPage(nextPage as typeof materialPage); setActive(nextPage); }} /> : isCostPage ? <CostDashboard page={costPage} focus={costFocus} onNavigate={(nextPage, nav) => { setCostPage(nextPage); setCostFocus(nav); setActive(`cost-${nextPage.toLowerCase().replaceAll(" ", "-")}`); }} /> : isSqcdipPage ? <SqcdipDashboard page={active === "Abnormal Tracker" ? "Abnormal Tracker" : "Overview"} onOpenCost={(page, nav) => { setCostPage(page); setCostFocus(nav); setActive(`cost-${page.toLowerCase().replaceAll(" ", "-")}`); }} /> : isServicePage ? <ServiceDashboard pageKey={active as ServicePageKey} /> : isQcPage ? <OqcDashboard page={active as Page} onPageChange={(nextPage) => setActive(nextPage)} /> : isAssemblyPage ? <AssemblyDashboard page={active as AssemblyPage} /> : <>
             <div className="page-heading">
               <div><p>WAREHOUSE ANALYTICS</p><h1>Material overview</h1><span>Track inventory health and clearance performance.</span></div>
               <div className="range-wrap">

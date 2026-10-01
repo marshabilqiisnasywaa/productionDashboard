@@ -30,6 +30,28 @@ function getStatus(current: number, target: number, higherIsBetter: boolean): "o
   return "bad";
 }
 
+function isOnTarget(actual: number, target: number, higherIsBetter: boolean) {
+  return higherIsBetter ? actual >= target : actual <= target;
+}
+
+function Sparkline({ success }: { success: boolean }) {
+  return <svg className="repair-spark" viewBox="0 0 112 35" preserveAspectRatio="none"><path d="M1 28 8 25 15 27 22 18 29 21 36 15 43 18 50 11 57 14 64 8 71 13 78 6 85 10 92 5 99 9 111 3" fill="none" stroke={success ? "var(--success)" : "var(--danger)"} strokeWidth="2"/><path d="M1 34V28L8 25 15 27 22 18 29 21 36 15 43 18 50 11 57 14 64 8 71 13 78 6 85 10 92 5 99 9 111 3V34Z" fill={success ? "var(--success-soft)" : "var(--danger-soft)"}/></svg>;
+}
+
+type ServiceChartPoint = ServiceChartItem & { higherIsBetter: boolean };
+
+function ServiceTooltip({ active, payload, label, unit }: { active?: boolean; payload?: readonly { payload?: ServiceChartPoint }[]; label?: string; unit: string }) {
+  if (!active || !payload?.[0]?.payload) return null;
+  const point = payload[0].payload;
+  return <div className="repair-tooltip"><strong>{label}</strong><div><span>Target</span><b>{point.target.toFixed(2)}{unit}</b></div><div><span>Actual</span><b>{point.actual.toFixed(2)}{unit}</b></div><div><span>Selisih</span><b>{(point.actual - point.target).toFixed(2)}{unit}</b></div></div>;
+}
+
+function ServiceStatusDot(props: { cx?: number; cy?: number; payload?: ServiceChartPoint }) {
+  if (props.cx === undefined || props.cy === undefined || !props.payload) return <g />;
+  const good = isOnTarget(props.payload.actual, props.payload.target, props.payload.higherIsBetter);
+  return <circle cx={props.cx} cy={props.cy} r="4" fill={good ? "var(--success)" : "var(--danger)"} stroke="var(--card)" strokeWidth="2" />;
+}
+
 function ServiceKpiCard({
   item,
   onSelect,
@@ -40,18 +62,19 @@ function ServiceKpiCard({
   selected: boolean;
 }) {
   const status = getStatus(item.value, item.target, item.target >= 90 || item.label.toLowerCase().includes("pass") || item.label.toLowerCase().includes("rate"));
+  const good = status === "ok";
 
   return (
     <button
       type="button"
-      className={`oqc-metric-card status-${status} ${selected ? "service-selected" : ""}`}
+      className={`repair-kpi status-${status} ${selected ? "service-selected" : ""}`}
       onClick={() => onSelect(item.id)}
       style={{ textAlign: "left", cursor: "pointer" }}
     >
-      <span className="metric-accent" />
-      <div className="oqc-metric-label">{item.label}</div>
-      <div className="oqc-metric-value up">{item.value.toFixed(1)}%</div>
-      <div className="oqc-metric-delta up">Target {item.target.toFixed(1)}%</div>
+      <div className="repair-kpi-top"><span>{item.label}</span><span className={`repair-status ${good ? "good" : "bad"}`}>{good ? "On Target" : "Off Target"}</span></div>
+      <strong>{item.value.toFixed(1)}%</strong>
+      <p>Target: {item.target.toFixed(1)}%</p>
+      <Sparkline success={good} />
     </button>
   );
 }
@@ -79,23 +102,26 @@ function ServiceLineChart({
   unit?: string;
   selected: boolean;
 }) {
+  const [labels, setLabels] = useState(false);
   const chartData = data.map((point) => ({ ...point, target: targetValue, actual: point.actual }));
+  const higherIsBetter = targetValue >= 90 || title.toLowerCase().includes("pass") || title.toLowerCase().includes("rate");
 
   return (
-    <article id={id} className={`qc-card large-card service-chart-card ${selected ? "service-chart-card-active" : ""}`}>
-      <div className="qc-card-header compact">
+    <article id={id} className={`repair-panel metric-chart ${selected ? "service-chart-card-active" : ""}`}>
+      <div className="repair-card-head">
         <div>
-          <h3>{title}</h3>
+          <h2>{title}</h2>
+          <p>Performa aktual terhadap target • 2025</p>
         </div>
+        <label className="label-toggle"><input type="checkbox" checked={labels} onChange={(event) => setLabels(event.target.checked)} /><span />Tampilkan label</label>
       </div>
 
-      <div className="service-chart-shell">
+      <div className="line-chart-wrap service-chart-shell">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 12, right: 20, left: 10, bottom: 12 }}>
-            <CartesianGrid stroke="var(--line)" strokeDasharray="3 3" vertical={false} />
+          <LineChart data={chartData} margin={{ top: 18, right: 18, left: 6, bottom: 8 }}>
+            <CartesianGrid vertical={false} />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 11, fill: "var(--muted)", fontFamily: "Montserrat" }}
               axisLine={false}
               tickLine={false}
               interval={0}
@@ -106,35 +132,20 @@ function ServiceLineChart({
               domain={[0, yMax]}
               ticks={yTicks}
               tickFormatter={(value) => `${Number(value).toFixed(2)}${unit}`}
-              tick={{ fontSize: 11, fill: "var(--muted)", fontFamily: "Montserrat" }}
               axisLine={false}
               tickLine={false}
             />
-            <Tooltip
-              formatter={(value: number) => [`${Number(value).toFixed(2)}${unit}`, ""]}
-              contentStyle={{
-                background: "rgba(27, 43, 35, 0.92)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 8,
-                color: "#fff",
-                boxShadow: "0 18px 36px rgba(0,0,0,0.22)",
-                fontFamily: "Montserrat",
-                fontSize: 12,
-              }}
-              labelStyle={{ color: "#fff", fontWeight: 600, fontFamily: "Montserrat" }}
-              wrapperStyle={{ outline: "none" }}
-              labelFormatter={(value) => value}
-            />
+            <Tooltip content={<ServiceTooltip unit={unit} />} cursor={{ stroke: "var(--line)" }} />
             <Legend
               verticalAlign="bottom"
-              iconType="circle"
-              wrapperStyle={{ paddingTop: 12, fontSize: 11, color: "var(--muted)", fontFamily: "Montserrat" }}
+              iconType="line"
+              wrapperStyle={{ paddingTop: 8, marginTop: 0 }}
             />
             <Line
               type="monotone"
               dataKey="target"
               name={targetLabel}
-              stroke="var(--danger)"
+              stroke="var(--success)"
               strokeWidth={2}
               strokeDasharray="4 4"
               dot={false}
@@ -144,17 +155,17 @@ function ServiceLineChart({
               type="monotone"
               dataKey="actual"
               name={actualLabel}
-              stroke="var(--success)"
-              strokeWidth={2.5}
-              dot={{ r: 2.6, fill: "var(--success)" }}
-              activeDot={{ r: 5 }}
+              stroke="var(--chart-1)"
+              strokeWidth={2}
+              dot={(props) => <ServiceStatusDot {...props} />}
               isAnimationActive={false}
             >
-              <LabelList dataKey="actual" position="top" formatter={(value: number) => `${Number(value).toFixed(2)}${unit}`} style={{ fontSize: 10, fill: "var(--muted)", fontFamily: "Montserrat" }} />
+              {labels && <LabelList dataKey="actual" position="top" className="repair-point-label" formatter={(value: number) => `${Number(value).toFixed(2)}${unit}`} />}
             </Line>
           </LineChart>
         </ResponsiveContainer>
       </div>
+      <div className="metric-chart-footer"><strong>Target dan actual untuk periode terpilih</strong><span>Nilai aktual dibandingkan dengan standar yang ditetapkan</span></div>
     </article>
   );
 }
