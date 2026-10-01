@@ -60,6 +60,7 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
 
 const platformMenu: { label: string; icon: IconName; submenu?: string[] }[] = [
   { label: "Dashboard", icon: "grid" },
+  { label: "SQCDIP", icon: "chart", submenu: ["Overview", "Abnormal Tracker"] },
   { label: "Assembly", icon: "assembly" },
   { label: "Packing", icon: "package" },
   { label: "QC", icon: "shield" },
@@ -140,7 +141,7 @@ function ChartLegend({ payload }: { payload?: readonly { value?: string; color?:
 
 export default function App() {
   const [dark, setDark] = useState(false);
-  const [active, setActive] = useState("Warehouse");
+  const [active, setActive] = useState("Dashboard");
   const [rangeOpen, setRangeOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [mobileSidebar, setMobileSidebar] = useState(false);
@@ -162,7 +163,7 @@ export default function App() {
   const filteredCommands = filteredCommandGroups.flatMap((group) => group.items);
   const isRepairPage = ["Preassembly", "Rework", "Warranty", "Abnormal"].includes(active);
   const isProductionPage = active === "Dashboard";
-  const isSqcdipPage = active === "SQCDIP Overview" || active === "Abnormal Tracker";
+  const isSqcdipPage = ["Overview", "Abnormal Tracker"].includes(active);
   const activeBrandLogo = dark ? oppoLogoDark : oppoLogo;
 
   useEffect(() => {
@@ -207,8 +208,10 @@ export default function App() {
   useEffect(() => setCommandIndex(0), [commandQuery]);
 
   const selectMenu = (label: string) => {
-    const nextItem = menu.find((item) => item.label === label);
-    setActive(nextItem?.label ?? label);
+    const normalized = label === "SQCDIP Overview" ? "Overview" : label;
+    const exactMatch = menu.find((item) => item.label === normalized);
+    const submenuMatch = menu.some((item) => item.submenu?.includes(normalized));
+    setActive(submenuMatch ? normalized : (exactMatch?.label ?? normalized));
     setMobileSidebar(false);
   };
 
@@ -240,7 +243,7 @@ export default function App() {
                   </button>
                   {item.submenu && item.label !== "Repair" && warehouseOpen && sidebarExpanded && (
                     <div className="submenu">
-                      {item.submenu.map((sub) => <button key={sub} className={sub === "Overview" && active === "Warehouse" ? "current" : ""} onClick={() => selectMenu("Warehouse")}>{sub}</button>)}
+                      {item.submenu.map((sub) => <button key={sub} className={sub === active ? "current" : ""} onClick={() => selectMenu(sub)}>{sub}</button>)}
                     </div>
                   )}
                   {item.submenu && item.label === "Repair" && repairOpen && sidebarExpanded && (
